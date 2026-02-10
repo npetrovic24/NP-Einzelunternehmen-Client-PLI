@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import type { AccessGrant, Course, Module, Unit } from "@/lib/types";
+import type { AccessGrant, Course, Module, Unit, UserRole } from "@/lib/types";
 
 export interface UserAccessData {
   grants: AccessGrant[];
   courses: Course[];
   modules: Module[];
   units: Unit[];
+  role: UserRole;
 }
 
 /**
@@ -93,7 +94,12 @@ export async function getUserAccessData(
 ): Promise<UserAccessData> {
   const supabase = await createClient();
 
-  const [grantsRes, coursesRes, modulesRes, unitsRes] = await Promise.all([
+  const [profileRes, grantsRes, coursesRes, modulesRes, unitsRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single(),
     supabase.from("access_grants").select("*").eq("user_id", userId),
     supabase
       .from("courses")
@@ -115,6 +121,7 @@ export async function getUserAccessData(
     courses: coursesRes.data || [],
     modules: modulesRes.data || [],
     units: unitsRes.data || [],
+    role: (profileRes.data?.role as UserRole) || "member",
   };
 }
 
@@ -123,6 +130,9 @@ export async function getUserAccessData(
  */
 export async function getAccessibleCourses(userId: string) {
   const data = await getUserAccessData(userId);
+
+  // Admins see all active courses
+  if (data.role === "admin") return data.courses;
 
   return data.courses.filter((course) =>
     hasCourseAccess(data.grants, course, data.units)
@@ -141,14 +151,17 @@ export async function getAccessibleCoursesWithCounts(
   userId: string
 ): Promise<CourseWithCounts[]> {
   const data = await getUserAccessData(userId);
+  const isAdmin = data.role === "admin";
 
   return data.courses
-    .filter((course) => hasCourseAccess(data.grants, course, data.units))
+    .filter((course) =>
+      isAdmin || hasCourseAccess(data.grants, course, data.units)
+    )
     .map((course) => {
       const courseUnits = data.units.filter((u) => u.course_id === course.id);
-      const accessibleUnits = courseUnits.filter((u) =>
-        hasUnitAccess(data.grants, u)
-      );
+      const accessibleUnits = isAdmin
+        ? courseUnits
+        : courseUnits.filter((u) => hasUnitAccess(data.grants, u));
       return {
         ...course,
         unitCount: courseUnits.length,
@@ -161,27 +174,27 @@ export async function getAccessibleCoursesWithCounts(
  * Gets full course data with access info for the course viewer.
  */
 export async function getCourseWithAccess(userId: string, courseId: string) {
-  const supabase = await createClient();
   const data = await getUserAccessData(userId);
+  const isAdmin = data.role === "admin";
 
   const course = data.courses.find((c) => c.id === courseId);
   if (!course) return null;
 
-  if (!hasCourseAccess(data.grants, course, data.units)) return null;
+  if (!isAdmin && !hasCourseAccess(data.grants, course, data.units)) return null;
 
   const courseModules = data.modules.filter((m) => m.course_id === courseId);
   const courseUnits = data.units.filter((u) => u.course_id === courseId);
 
-  // Mark each unit with access status
+  // Mark each unit with access status (admins have access to all)
   const unitsWithAccess = courseUnits.map((unit) => ({
     ...unit,
-    hasAccess: hasUnitAccess(data.grants, unit),
+    hasAccess: isAdmin || hasUnitAccess(data.grants, unit),
   }));
 
   // Mark each module with access status
   const modulesWithAccess = courseModules.map((mod) => ({
     ...mod,
-    hasAccess: hasModuleAccess(data.grants, mod, courseUnits),
+    hasAccess: isAdmin || hasModuleAccess(data.grants, mod, courseUnits),
   }));
 
   return {
@@ -197,6 +210,7 @@ export async function getCourseWithAccess(userId: string, courseId: string) {
 export async function getUnitContent(userId: string, courseId: string, unitId: string) {
   const supabase = await createClient();
   const data = await getUserAccessData(userId);
+  const isAdmin = data.role === "admin";
 
   const course = data.courses.find((c) => c.id === courseId);
   if (!course) return null;
@@ -204,13 +218,7 @@ export async function getUnitContent(userId: string, courseId: string, unitId: s
   const unit = data.units.find((u) => u.id === unitId && u.course_id === courseId);
   if (!unit) return null;
 
-  if (!hasUnitAccess(data.grants, unit)) return null;
-
-  const { data: blocks } = await supabase
-    .from("content_blocks")
-    .select("id, unit_id, type, sort_order, created_at")
-    .eq("unit_id", unitId)
-    .order("sort_order", { ascending: true });
+  if (!isAdmin && !hasUnitAccess(data.grants, unit)) return null;
 
   // For non-canva blocks, fetch content too
   const { data: fullBlocks } = await supabase
@@ -232,7 +240,9 @@ export async function getUnitContent(userId: string, courseId: string, unitId: s
 
   // Get accessible units for prev/next navigation
   const courseUnits = data.units.filter((u) => u.course_id === courseId);
-  const accessibleUnits = courseUnits.filter((u) => hasUnitAccess(data.grants, u));
+  const accessibleUnits = isAdmin
+    ? courseUnits
+    : courseUnits.filter((u) => hasUnitAccess(data.grants, u));
 
   const currentIndex = accessibleUnits.findIndex((u) => u.id === unitId);
   const prevUnit = currentIndex > 0 ? accessibleUnits[currentIndex - 1] : null;

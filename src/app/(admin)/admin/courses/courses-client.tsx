@@ -317,9 +317,10 @@ export function CoursesClient({ initialCourses }: CoursesClientProps) {
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
+                  <Button variant="outline" size="sm" asChild>
                     <Link href={`/admin/courses/${course.id}/access`}>
-                      <Shield className="h-4 w-4" />
+                      <Shield className="mr-1.5 h-3.5 w-3.5" />
+                      Zugriff
                     </Link>
                   </Button>
                   <Button

@@ -52,6 +52,7 @@ import {
   Pencil,
   Check,
   X,
+  Eye,
 } from "lucide-react";
 
 interface UnitWithBlocks extends Unit {
@@ -408,6 +409,12 @@ export function CourseDetailClient({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/courses/${course.id}`} target="_blank">
+                <Eye className="mr-2 h-4 w-4" />
+                Vorschau
+              </Link>
+            </Button>
             <Button variant="outline" asChild>
               <Link href={`/admin/courses/${course.id}/access`}>
                 <Shield className="mr-2 h-4 w-4" />
