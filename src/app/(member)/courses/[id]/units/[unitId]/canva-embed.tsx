@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface CanvaEmbedProps {
@@ -13,6 +13,7 @@ export function CanvaEmbed({ blockId, title }: CanvaEmbedProps) {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   useEffect(() => {
     async function fetchUrl() {
@@ -32,15 +33,7 @@ export function CanvaEmbed({ blockId, title }: CanvaEmbedProps) {
     fetchUrl();
   }, [blockId]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error || !embedUrl) {
+  if (error || (!loading && !embedUrl)) {
     return (
       <Card className="border-destructive/20">
         <CardContent className="flex items-center gap-3 p-4">
@@ -58,15 +51,30 @@ export function CanvaEmbed({ blockId, title }: CanvaEmbedProps) {
       {title && (
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
       )}
-      <div className="relative w-full overflow-hidden rounded-lg border border-border" style={{ paddingBottom: "56.25%" }}>
-        <iframe
-          src={embedUrl}
-          className="absolute inset-0 h-full w-full"
-          loading="lazy"
-          allowFullScreen
-          allow="fullscreen"
-          title={title || "Canva Präsentation"}
-        />
+      <div
+        className="relative w-full overflow-hidden rounded-lg border border-border bg-muted"
+        style={{ minHeight: "70vh" }}
+      >
+        {/* Skeleton while loading */}
+        {(loading || !iframeLoaded) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <p className="text-sm text-muted-foreground">Wird geladen...</p>
+          </div>
+        )}
+        {embedUrl && (
+          <iframe
+            src={embedUrl}
+            className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${
+              iframeLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            loading="lazy"
+            allowFullScreen
+            allow="fullscreen"
+            title={title || "Canva Präsentation"}
+            onLoad={() => setIframeLoaded(true)}
+          />
+        )}
       </div>
     </div>
   );

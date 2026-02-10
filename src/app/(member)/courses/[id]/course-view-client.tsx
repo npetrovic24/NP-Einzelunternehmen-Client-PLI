@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen } from "lucide-react";
+import { Lock } from "lucide-react";
 import type { Course, Module, Unit } from "@/lib/types";
 
 interface UnitWithAccess extends Unit {
@@ -20,9 +20,9 @@ interface CourseViewClientProps {
 
 export function CourseViewClient({ course }: CourseViewClientProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <BookOpen className="h-8 w-8 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center p-12 text-center animate-fade-in-up">
+      <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-accent">
+        <Lock className="h-10 w-10 text-primary/60" />
       </div>
       <h2 className="text-lg font-semibold">{course.name}</h2>
       {course.description && (
@@ -30,8 +30,9 @@ export function CourseViewClient({ course }: CourseViewClientProps) {
           {course.description}
         </p>
       )}
-      <p className="mt-4 text-sm text-muted-foreground">
+      <p className="mt-4 text-sm text-muted-foreground max-w-sm">
         Dieser Lehrgang hat noch keine freigeschalteten Inhalte.
+        Bitte kontaktiere deinen Administrator.
       </p>
     </div>
   );

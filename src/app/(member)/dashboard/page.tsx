@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAccessibleCourses } from "@/lib/access";
+import { getAccessibleCoursesWithCounts } from "@/lib/access";
 import { DashboardClient } from "./dashboard-client";
 
 export default async function DashboardPage() {
@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  const courses = await getAccessibleCourses(user.id);
+  const courses = await getAccessibleCoursesWithCounts(user.id);
 
   return (
     <DashboardClient

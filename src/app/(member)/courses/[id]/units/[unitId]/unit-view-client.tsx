@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -7,12 +8,11 @@ import {
   ChevronRight,
   Download,
   ExternalLink,
-  FileIcon,
+  FileText,
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import type { ContentBlock, Course, Unit } from "@/lib/types";
 import { CanvaEmbed } from "./canva-embed";
 
@@ -50,22 +50,24 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
 
     case "file":
       return (
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-              <FileIcon className="h-5 w-5 text-muted-foreground" />
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-accent">
+              <FileText className="h-6 w-6 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm truncate">
-                {(content.fileName as string) || "Datei"}
+              <p className="font-semibold text-sm">
+                {(content.filename as string) ||
+                  (content.fileName as string) ||
+                  "Skript / Dokument"}
               </p>
               {typeof content.fileSize === "number" && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {formatFileSize(content.fileSize)}
                 </p>
               )}
             </div>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild size="sm">
               <a
                 href={content.publicUrl as string}
                 download
@@ -82,7 +84,7 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
 
     case "link":
       return (
-        <Card>
+        <Card className="transition-shadow hover:shadow-md">
           <CardContent className="p-4">
             <a
               href={content.url as string}
@@ -121,66 +123,88 @@ export function UnitViewClient({
   nextUnit,
   courseId,
 }: UnitViewClientProps) {
+  // Scroll to top when unit changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [unit.id]);
+
   return (
-    <div className="p-6 lg:p-8 max-w-4xl">
-      {/* Breadcrumb */}
-      <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href="/dashboard" className="hover:text-foreground transition-colors">
-          Dashboard
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <Link
-          href={`/courses/${courseId}`}
-          className="hover:text-foreground transition-colors"
-        >
-          {course.name}
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">{unit.name}</span>
-      </nav>
+    <div className="relative animate-fade-in">
+      <div className="p-6 lg:p-8 max-w-5xl pb-24">
+        {/* Breadcrumb */}
+        <nav className="mb-6 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Link
+            href="/dashboard"
+            className="hover:text-foreground transition-colors"
+          >
+            Dashboard
+          </Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link
+            href={`/courses/${courseId}`}
+            className="hover:text-foreground transition-colors truncate max-w-[200px]"
+          >
+            {course.name}
+          </Link>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-foreground font-medium truncate max-w-[200px]">
+            {unit.name}
+          </span>
+        </nav>
 
-      {/* Unit title */}
-      <h1 className="text-xl font-semibold mb-6">{unit.name}</h1>
+        {/* Unit title */}
+        <h1 className="text-xl font-semibold mb-8 lg:text-2xl">{unit.name}</h1>
 
-      {/* Content blocks */}
-      {blocks.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
-          <p className="text-muted-foreground">
-            Dieser Tag hat noch keine Inhalte.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {blocks.map((block) => (
-            <ContentBlockRenderer key={block.id} block={block} />
-          ))}
-        </div>
-      )}
-
-      {/* Previous / Next navigation */}
-      <Separator className="my-8" />
-      <div className="flex items-center justify-between gap-4">
-        {prevUnit ? (
-          <Button asChild variant="outline">
-            <Link href={`/courses/${courseId}/units/${prevUnit.id}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {prevUnit.name}
-            </Link>
-          </Button>
+        {/* Content blocks */}
+        {blocks.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-12 text-center">
+            <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
+            <p className="text-muted-foreground">
+              Dieser Tag hat noch keine Inhalte.
+            </p>
+          </div>
         ) : (
-          <div />
-        )}
-        {nextUnit ? (
-          <Button asChild variant="outline">
-            <Link href={`/courses/${courseId}/units/${nextUnit.id}`}>
-              {nextUnit.name}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        ) : (
-          <div />
+          <div className="space-y-8">
+            {blocks.map((block) => (
+              <ContentBlockRenderer key={block.id} block={block} />
+            ))}
+          </div>
         )}
       </div>
+
+      {/* Sticky Prev/Next navigation bar */}
+      {(prevUnit || nextUnit) && (
+        <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-border bg-white/95 backdrop-blur-sm px-6 py-3 lg:px-8">
+          <div className="flex items-center justify-between gap-4 max-w-5xl">
+            {prevUnit ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/courses/${courseId}/units/${prevUnit.id}`}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline truncate max-w-[180px]">
+                    {prevUnit.name}
+                  </span>
+                  <span className="sm:hidden">Zurück</span>
+                </Link>
+              </Button>
+            ) : (
+              <div />
+            )}
+            {nextUnit ? (
+              <Button asChild size="sm">
+                <Link href={`/courses/${courseId}/units/${nextUnit.id}`}>
+                  <span className="hidden sm:inline truncate max-w-[180px]">
+                    {nextUnit.name}
+                  </span>
+                  <span className="sm:hidden">Weiter</span>
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <div />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

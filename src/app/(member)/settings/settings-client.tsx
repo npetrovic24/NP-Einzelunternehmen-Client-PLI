@@ -49,7 +49,7 @@ export function SettingsClient({ fullName, email }: SettingsClientProps) {
   };
 
   return (
-    <div className="mx-auto max-w-lg p-6">
+    <div className="mx-auto max-w-lg p-6 animate-fade-in">
       <h1 className="mb-6 text-2xl font-semibold">Einstellungen</h1>
 
       {/* Profile info (read-only) */}

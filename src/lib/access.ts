@@ -129,6 +129,34 @@ export async function getAccessibleCourses(userId: string) {
   );
 }
 
+export interface CourseWithCounts extends Course {
+  unitCount: number;
+  accessibleUnitCount: number;
+}
+
+/**
+ * Gets courses with unit counts for the dashboard.
+ */
+export async function getAccessibleCoursesWithCounts(
+  userId: string
+): Promise<CourseWithCounts[]> {
+  const data = await getUserAccessData(userId);
+
+  return data.courses
+    .filter((course) => hasCourseAccess(data.grants, course, data.units))
+    .map((course) => {
+      const courseUnits = data.units.filter((u) => u.course_id === course.id);
+      const accessibleUnits = courseUnits.filter((u) =>
+        hasUnitAccess(data.grants, u)
+      );
+      return {
+        ...course,
+        unitCount: courseUnits.length,
+        accessibleUnitCount: accessibleUnits.length,
+      };
+    });
+}
+
 /**
  * Gets full course data with access info for the course viewer.
  */

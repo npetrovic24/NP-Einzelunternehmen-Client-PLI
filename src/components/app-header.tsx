@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, Settings } from "lucide-react";
+import { LogOut, Menu, Settings, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +59,16 @@ export function AppHeader({ userName, isAdmin = false }: AppHeaderProps) {
         </Link>
       )}
 
-      {/* Spacer for admin (sidebar provides logo) */}
-      {isAdmin && <div className="flex-1" />}
+      {/* Admin badge + spacer */}
+      {isAdmin && (
+        <>
+          <Badge variant="outline" className="mr-auto gap-1 border-primary/30 text-primary text-xs">
+            <Shield className="h-3 w-3" />
+            Admin
+          </Badge>
+          <div className="flex-1" />
+        </>
+      )}
 
       {/* User menu */}
       <div className="ml-auto flex items-center gap-2">

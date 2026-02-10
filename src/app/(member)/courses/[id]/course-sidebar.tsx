@@ -10,6 +10,7 @@ import {
   Menu,
   ArrowLeft,
   FileText,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -40,7 +41,6 @@ function SidebarContent({
 }: CourseSidebarProps & { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [expandedModules, setExpandedModules] = useState<Set<string>>(() => {
-    // Expand all modules by default
     return new Set(modules.map((m) => m.id));
   });
 
@@ -59,8 +59,9 @@ function SidebarContent({
   const isCurrentUnit = (unitId: string) =>
     pathname.includes(`/units/${unitId}`);
 
-  // Units without a module (standalone)
   const standaloneUnits = units.filter((u) => !u.module_id);
+  const accessibleUnits = units.filter((u) => u.hasAccess);
+  const totalUnits = units.length;
 
   return (
     <div className="flex h-full flex-col">
@@ -75,21 +76,40 @@ function SidebarContent({
           Zurück zu Meine Lehrgänge
         </Link>
         <h2 className="font-semibold text-sm leading-tight">{course.name}</h2>
+        {totalUnits > 0 && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span>{accessibleUnits.length} von {totalUnits} Tagen</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${(accessibleUnits.length / totalUnits) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
       <ScrollArea className="flex-1">
         <nav className="p-2">
-          {/* Modules */}
           {modules.map((mod) => {
             const moduleUnits = units.filter((u) => u.module_id === mod.id);
             const isExpanded = expandedModules.has(mod.id);
+            const hasActiveUnit = moduleUnits.some((u) =>
+              isCurrentUnit(u.id)
+            );
 
             return (
               <div key={mod.id} className="mb-1">
                 <button
                   onClick={() => toggleModule(mod.id)}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    hasActiveUnit
+                      ? "text-primary"
+                      : "text-foreground hover:bg-muted"
+                  }`}
                 >
                   {isExpanded ? (
                     <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -100,7 +120,7 @@ function SidebarContent({
                 </button>
 
                 {isExpanded && (
-                  <div className="ml-2 border-l border-border">
+                  <div className="ml-2 border-l-2 border-border">
                     {moduleUnits.length === 0 ? (
                       <p className="px-5 py-2 text-xs text-muted-foreground">
                         Keine Einheiten
@@ -122,7 +142,6 @@ function SidebarContent({
             );
           })}
 
-          {/* Standalone units (no module) */}
           {standaloneUnits.length > 0 && (
             <div className="mt-1">
               {modules.length > 0 && (
@@ -160,7 +179,7 @@ function UnitNavItem({
     return (
       <div className="flex items-center gap-2 rounded-md px-5 py-2 text-sm text-muted-foreground/50 cursor-not-allowed">
         <Lock className="h-3.5 w-3.5 shrink-0" />
-        <span>{unit.name}</span>
+        <span className="truncate">{unit.name}</span>
       </div>
     );
   }
@@ -171,12 +190,16 @@ function UnitNavItem({
       onClick={onNavigate}
       className={`flex items-center gap-2 rounded-md px-5 py-2 text-sm transition-colors ${
         isCurrent
-          ? "bg-accent text-accent-foreground font-medium"
+          ? "bg-accent text-primary font-medium border-l-2 border-l-primary -ml-[2px]"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
       }`}
     >
-      <FileText className="h-3.5 w-3.5 shrink-0" />
-      <span>{unit.name}</span>
+      {isCurrent ? (
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+      ) : (
+        <FileText className="h-3.5 w-3.5 shrink-0" />
+      )}
+      <span className="truncate">{unit.name}</span>
     </Link>
   );
 }
