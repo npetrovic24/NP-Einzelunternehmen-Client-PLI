@@ -50,9 +50,7 @@ export function AppHeader({ userName, isAdmin = false }: AppHeaderProps) {
       {/* Logo for member view */}
       {!isAdmin && (
         <Link href="/dashboard" className="flex items-center gap-2 mr-auto">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-            PLI
-          </div>
+          <img src="/logo-teal.svg" alt="PLI" className="h-8 w-auto" />
           <span className="text-sm font-semibold text-foreground">
             Lernportal
           </span>

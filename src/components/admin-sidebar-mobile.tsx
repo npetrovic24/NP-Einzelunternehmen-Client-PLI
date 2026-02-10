@@ -18,9 +18,7 @@ export function AdminSidebarMobile() {
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-6 py-5">
         <Link href="/admin" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-            PLI
-          </div>
+          <img src="/logo-teal.svg" alt="PLI" className="h-9 w-auto" />
           <span className="text-sm font-semibold text-foreground">Admin</span>
         </Link>
       </div>

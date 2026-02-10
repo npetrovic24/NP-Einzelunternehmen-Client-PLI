@@ -83,9 +83,7 @@ export default function LoginPage() {
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-20">
-          <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm text-2xl font-bold text-white">
-            PLI
-          </div>
+          <img src="/logo-white.svg" alt="PLI Logo" className="mb-8 h-16 w-auto" />
           <h1 className="text-4xl font-bold leading-tight text-white xl:text-5xl">
             Willkommen im<br />Lernportal
           </h1>
@@ -113,9 +111,7 @@ export default function LoginPage() {
           <div className="w-full max-w-sm">
             {/* Logo */}
             <div className="mb-10 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-xl font-bold text-primary-foreground shadow-sm">
-                PLI
-              </div>
+              <img src="/logo-teal.svg" alt="PLI Logo" className="mx-auto mb-4 h-14 w-auto" />
               <h1 className="text-xl font-semibold text-foreground">
                 Lösungs-Impulse
               </h1>

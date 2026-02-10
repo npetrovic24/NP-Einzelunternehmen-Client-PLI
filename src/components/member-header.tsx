@@ -52,9 +52,7 @@ export function MemberHeader({ userName }: MemberHeaderProps) {
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
           <div className="flex h-14 items-center border-b border-border px-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-              PLI
-            </div>
+            <img src="/logo-teal.svg" alt="PLI" className="h-8 w-auto" />
             <span className="ml-2 text-sm font-semibold">Lernportal</span>
           </div>
           <nav className="flex flex-col gap-1 p-4">
@@ -89,9 +87,7 @@ export function MemberHeader({ userName }: MemberHeaderProps) {
 
       {/* Logo */}
       <Link href="/dashboard" className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-          PLI
-        </div>
+        <img src="/logo-teal.svg" alt="PLI" className="h-8 w-auto" />
         <span className="text-sm font-semibold text-foreground hidden sm:inline">
           Lernportal
         </span>
