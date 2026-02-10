@@ -55,6 +55,10 @@ export async function updateSession(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = "/admin";
         return NextResponse.redirect(url);
+      } else if (profile?.role === "dozent") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin/members";
+        return NextResponse.redirect(url);
       } else {
         const url = request.nextUrl.clone();
         url.pathname = "/dashboard";
@@ -85,9 +89,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin routes: only for admin role
+  // Admin routes: access control by role
   if (pathname.startsWith("/admin")) {
-    if (profile?.role !== "admin") {
+    if (profile?.role === "admin") {
+      // Admin can access everything
+    } else if (profile?.role === "dozent") {
+      // Dozent can only access /admin/members
+      if (!pathname.startsWith("/admin/members")) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin/members";
+        return NextResponse.redirect(url);
+      }
+    } else {
+      // Participants cannot access admin area
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);

@@ -4,22 +4,33 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { UserRole } from "@/lib/types";
 
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/members", label: "Benutzer", icon: Users },
-  { href: "/admin/courses", label: "Lehrgänge", icon: BookOpen },
+const allNavItems = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
+  { href: "/admin/members", label: "Benutzer", icon: Users, adminOnly: false },
+  { href: "/admin/courses", label: "Lehrgänge", icon: BookOpen, adminOnly: true },
 ];
 
-export function AdminSidebarMobile() {
+interface AdminSidebarMobileProps {
+  role: UserRole;
+}
+
+export function AdminSidebarMobile({ role }: AdminSidebarMobileProps) {
   const pathname = usePathname();
+  const navItems = role === "dozent"
+    ? allNavItems.filter((item) => !item.adminOnly)
+    : allNavItems;
+
+  const homeHref = role === "dozent" ? "/admin/members" : "/admin";
+  const title = role === "dozent" ? "Verwaltung" : "Admin";
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-6 py-5">
-        <Link href="/admin" className="flex items-center gap-3">
+        <Link href={homeHref} className="flex items-center gap-3">
           <img src="/logo-teal.svg" alt="PLI" className="h-9 w-auto" />
-          <span className="text-sm font-semibold text-foreground">Admin</span>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
         </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">

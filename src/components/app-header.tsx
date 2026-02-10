@@ -15,13 +15,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AdminSidebarMobile } from "@/components/admin-sidebar-mobile";
+import type { UserRole } from "@/lib/types";
 
 interface AppHeaderProps {
   userName: string;
   isAdmin?: boolean;
+  role?: UserRole;
+  headerLabel?: string;
 }
 
-export function AppHeader({ userName, isAdmin = false }: AppHeaderProps) {
+export function AppHeader({ userName, isAdmin = false, role = "participant", headerLabel }: AppHeaderProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -42,7 +45,7 @@ export function AppHeader({ userName, isAdmin = false }: AppHeaderProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
-            <AdminSidebarMobile />
+            <AdminSidebarMobile role={role} />
           </SheetContent>
         </Sheet>
       )}
@@ -62,7 +65,7 @@ export function AppHeader({ userName, isAdmin = false }: AppHeaderProps) {
         <>
           <Badge variant="outline" className="mr-auto gap-1 border-primary/30 text-primary text-xs">
             <Shield className="h-3 w-3" />
-            Admin
+            {headerLabel || "Admin"}
           </Badge>
           <div className="flex-1" />
         </>

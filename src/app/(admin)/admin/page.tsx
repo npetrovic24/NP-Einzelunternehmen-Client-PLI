@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, BookOpen, BarChart3, Layers, Clock } from "lucide-react";
@@ -5,6 +6,19 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
+
+  // Dozent should not see the dashboard
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role === "dozent") {
+      redirect("/admin/members");
+    }
+  }
 
   const [
     { count: membersCount },

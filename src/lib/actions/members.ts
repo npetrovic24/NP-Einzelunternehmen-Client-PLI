@@ -21,8 +21,26 @@ async function requireAdmin() {
   return user;
 }
 
+async function requireAdminOrDozent() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Nicht authentifiziert");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "dozent"))
+    throw new Error("Keine Berechtigung");
+  return { user, role: profile.role as "admin" | "dozent" };
+}
+
 export async function getMembers() {
-  await requireAdmin();
+  await requireAdminOrDozent();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -35,7 +53,7 @@ export async function getMembers() {
 }
 
 export async function getAllCourses() {
-  await requireAdmin();
+  await requireAdminOrDozent();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -55,9 +73,10 @@ export async function createMember(formData: {
   role?: "admin" | "dozent" | "participant";
   courseAssignments?: { courseId: string; expiresAt?: string | null }[];
 }) {
-  await requireAdmin();
+  const { role: callerRole } = await requireAdminOrDozent();
   const admin = createAdminClient();
-  const role = formData.role || "participant";
+  // Dozent can only create participants
+  const role = callerRole === "dozent" ? "participant" : (formData.role || "participant");
 
   const { data, error } = await admin.auth.admin.createUser({
     email: formData.email,
@@ -98,16 +117,29 @@ export async function updateMember(
   memberId: string,
   formData: { fullName: string; email: string; role?: "admin" | "dozent" | "participant" }
 ) {
-  await requireAdmin();
+  const { role: callerRole } = await requireAdminOrDozent();
   const supabase = await createClient();
   const admin = createAdminClient();
+
+  // Dozent can only edit participants
+  if (callerRole === "dozent") {
+    const { data: target } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", memberId)
+      .single();
+    if (!target || target.role !== "participant") {
+      return { error: "Keine Berechtigung, diesen Benutzer zu bearbeiten." };
+    }
+  }
 
   // Update profile
   const profileUpdate: Record<string, string> = {
     full_name: formData.fullName,
     email: formData.email,
   };
-  if (formData.role) {
+  // Dozent cannot change roles
+  if (formData.role && callerRole === "admin") {
     profileUpdate.role = formData.role;
   }
 
@@ -130,13 +162,25 @@ export async function updateMember(
 }
 
 export async function toggleMemberStatus(memberId: string, isActive: boolean) {
-  const currentUser = await requireAdmin();
+  const { user: currentUser, role: callerRole } = await requireAdminOrDozent();
 
   if (memberId === currentUser.id) {
     return { error: "Sie können sich nicht selbst deaktivieren." };
   }
 
   const supabase = await createClient();
+
+  // Dozent can only toggle participants
+  if (callerRole === "dozent") {
+    const { data: target } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", memberId)
+      .single();
+    if (!target || target.role !== "participant") {
+      return { error: "Keine Berechtigung, diesen Benutzer zu ändern." };
+    }
+  }
 
   const { error } = await supabase
     .from("profiles")
@@ -150,7 +194,21 @@ export async function toggleMemberStatus(memberId: string, isActive: boolean) {
 }
 
 export async function resetMemberPassword(memberId: string, newPassword: string) {
-  await requireAdmin();
+  const { role: callerRole } = await requireAdminOrDozent();
+
+  // Dozent can only reset passwords for participants
+  if (callerRole === "dozent") {
+    const supabase = await createClient();
+    const { data: target } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", memberId)
+      .single();
+    if (!target || target.role !== "participant") {
+      return { error: "Keine Berechtigung, dieses Passwort zurückzusetzen." };
+    }
+  }
+
   const admin = createAdminClient();
 
   const { error } = await admin.auth.admin.updateUserById(memberId, {

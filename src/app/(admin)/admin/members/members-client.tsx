@@ -71,9 +71,11 @@ interface CourseAssignment {
 interface MembersClientProps {
   initialMembers: Profile[];
   courses: CourseOption[];
+  currentUserRole?: UserRole;
 }
 
-export function MembersClient({ initialMembers, courses }: MembersClientProps) {
+export function MembersClient({ initialMembers, courses, currentUserRole = "admin" }: MembersClientProps) {
+  const isDozent = currentUserRole === "dozent";
   const [members, setMembers] = useState(initialMembers);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -98,18 +100,24 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
   // Reset form state
   const [newResetPassword, setNewResetPassword] = useState("");
 
+  // Dozent only sees participants
+  const visibleMembers = useMemo(() => {
+    if (isDozent) return members.filter((m) => m.role === "participant");
+    return members;
+  }, [members, isDozent]);
+
   const filteredMembers = useMemo(() => {
-    if (!search) return members;
+    if (!search) return visibleMembers;
     const q = search.toLowerCase();
-    return members.filter(
+    return visibleMembers.filter(
       (m) =>
         m.full_name.toLowerCase().includes(q) ||
         m.email.toLowerCase().includes(q)
     );
-  }, [members, search]);
+  }, [visibleMembers, search]);
 
-  const activeCount = members.filter((m) => m.is_active).length;
-  const totalCount = members.length;
+  const activeCount = visibleMembers.filter((m) => m.is_active).length;
+  const totalCount = visibleMembers.length;
 
   function toggleCourseAssignment(courseId: string) {
     setCourseAssignments((prev) => {
@@ -142,12 +150,13 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
     }
 
     setLoading(true);
+    const effectiveRole = isDozent ? "participant" : newRole;
     const result = await createMember({
       email: newEmail,
       password: newPassword,
       fullName: newName,
-      role: newRole,
-      courseAssignments: newRole === "participant" && courseAssignments.length > 0 ? courseAssignments : undefined,
+      role: effectiveRole,
+      courseAssignments: effectiveRole === "participant" && courseAssignments.length > 0 ? courseAssignments : undefined,
     });
     setLoading(false);
 
@@ -156,7 +165,7 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
       return;
     }
 
-    const roleLabel = newRole === "admin" ? "Admin" : newRole === "dozent" ? "Dozent/in" : "Benutzer";
+    const roleLabel = effectiveRole === "admin" ? "Admin" : effectiveRole === "dozent" ? "Dozent/in" : "Benutzer";
     toast.success(`${roleLabel} "${newName}" wurde angelegt.`);
     if (result.data) {
       setMembers((prev) => [
@@ -164,7 +173,7 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
           id: result.data.id,
           email: newEmail,
           full_name: newName,
-          role: newRole,
+          role: effectiveRole,
           is_active: true,
           created_at: new Date().toISOString(),
         },
@@ -189,7 +198,7 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
     const result = await updateMember(editMember.id, {
       fullName: editName,
       email: editEmail,
-      role: editRole,
+      role: isDozent ? undefined : editRole,
     });
     setLoading(false);
 
@@ -202,7 +211,7 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
     setMembers((prev) =>
       prev.map((m) =>
         m.id === editMember.id
-          ? { ...m, full_name: editName, email: editEmail, role: editRole }
+          ? { ...m, full_name: editName, email: editEmail, ...(isDozent ? {} : { role: editRole }) }
           : m
       )
     );
@@ -294,19 +303,21 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="role">Rolle</Label>
-                <Select value={newRole} onValueChange={(v) => setNewRole(v as UserRole)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="participant">Teilnehmer</SelectItem>
-                    <SelectItem value="dozent">Dozent/in</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isDozent && (
+                <div className="grid gap-2">
+                  <Label htmlFor="role">Rolle</Label>
+                  <Select value={newRole} onValueChange={(v) => setNewRole(v as UserRole)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="participant">Teilnehmer</SelectItem>
+                      <SelectItem value="dozent">Dozent/in</SelectItem>
+                      <SelectItem value="admin">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input
@@ -532,7 +543,7 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
                       >
                         <KeyRound className="h-4 w-4" />
                       </Button>
-                      {member.role === "participant" && (
+                      {!isDozent && member.role === "participant" && (
                         <Button variant="outline" size="sm" asChild>
                           <Link
                             href={`/admin/members/${member.id}/access`}
@@ -598,19 +609,21 @@ export function MembersClient({ initialMembers, courses }: MembersClientProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role">Rolle</Label>
-              <Select value={editRole} onValueChange={(v) => setEditRole(v as UserRole)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="participant">Teilnehmer</SelectItem>
-                  <SelectItem value="dozent">Dozent/in</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!isDozent && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-role">Rolle</Label>
+                <Select value={editRole} onValueChange={(v) => setEditRole(v as UserRole)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="participant">Teilnehmer</SelectItem>
+                    <SelectItem value="dozent">Dozent/in</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Name</Label>
               <Input
