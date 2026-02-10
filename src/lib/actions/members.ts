@@ -34,10 +34,25 @@ export async function getMembers() {
   return data;
 }
 
+export async function getAllCourses() {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("courses")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function createMember(formData: {
   email: string;
   password: string;
   fullName: string;
+  courseAssignments?: { courseId: string; expiresAt?: string | null }[];
 }) {
   await requireAdmin();
   const admin = createAdminClient();
@@ -48,7 +63,7 @@ export async function createMember(formData: {
     email_confirm: true,
     user_metadata: {
       full_name: formData.fullName,
-      role: "member",
+      role: "participant",
     },
   });
 
@@ -59,8 +74,52 @@ export async function createMember(formData: {
     return { error: error.message };
   }
 
+  // Assign courses if provided
+  if (formData.courseAssignments && formData.courseAssignments.length > 0 && data.user) {
+    const supabase = await createClient();
+    const grants = formData.courseAssignments.map((ca) => ({
+      user_id: data.user.id,
+      course_id: ca.courseId,
+      module_id: null,
+      unit_id: null,
+      is_granted: true,
+      expires_at: ca.expiresAt || null,
+    }));
+    await supabase.from("access_grants").insert(grants);
+  }
+
   revalidatePath("/admin/members");
   return { data: data.user };
+}
+
+export async function updateMember(
+  memberId: string,
+  formData: { fullName: string; email: string }
+) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Update profile
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      full_name: formData.fullName,
+      email: formData.email,
+    })
+    .eq("id", memberId);
+
+  if (profileError) return { error: profileError.message };
+
+  // Update auth email if changed
+  const { error: authError } = await admin.auth.admin.updateUserById(memberId, {
+    email: formData.email,
+  });
+
+  if (authError) return { error: authError.message };
+
+  revalidatePath("/admin/members");
+  return { success: true };
 }
 
 export async function toggleMemberStatus(memberId: string, isActive: boolean) {

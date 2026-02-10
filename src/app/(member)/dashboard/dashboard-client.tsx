@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Layers } from "lucide-react";
+import { BookOpen, Layers, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { CourseWithCounts } from "@/lib/access";
@@ -49,24 +49,53 @@ export function DashboardClient({ userName, courses }: DashboardClientProps) {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
             {courses.map((course) => (
-              <Link key={course.id} href={`/courses/${course.id}`}>
-                <Card className="group overflow-hidden border-t-4 border-t-primary transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5">
+              <Link
+                key={course.id}
+                href={course.isExpired ? "#" : `/courses/${course.id}`}
+                className={course.isExpired ? "pointer-events-none" : ""}
+              >
+                <Card
+                  className={`group overflow-hidden border-t-4 transition-all duration-200 ${
+                    course.isExpired
+                      ? "border-t-muted opacity-60 grayscale"
+                      : "border-t-primary hover:shadow-lg hover:-translate-y-0.5"
+                  }`}
+                >
                   <div className="relative aspect-[16/9] bg-muted">
                     {course.thumbnail_url ? (
                       <Image
                         src={course.thumbnail_url}
                         alt={course.name}
                         fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                        className={`object-cover transition-transform duration-300 ${
+                          course.isExpired ? "" : "group-hover:scale-[1.03]"
+                        }`}
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-gradient-to-br from-accent to-muted">
                         <BookOpen className="h-12 w-12 text-primary/30" />
                       </div>
                     )}
+                    {course.isExpired && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Badge
+                          variant="destructive"
+                          className="text-sm px-3 py-1"
+                        >
+                          <Clock className="mr-1.5 h-3.5 w-3.5" />
+                          Zugang abgelaufen
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                   <CardContent className="p-4">
-                    <h2 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                    <h2
+                      className={`font-semibold transition-colors ${
+                        course.isExpired
+                          ? "text-muted-foreground"
+                          : "text-foreground group-hover:text-primary"
+                      }`}
+                    >
                       {course.name}
                     </h2>
                     {course.description && (
@@ -88,7 +117,7 @@ export function DashboardClient({ userName, courses }: DashboardClientProps) {
                             </Badge>
                           ))}
                       </div>
-                      {course.accessibleUnitCount > 0 && (
+                      {!course.isExpired && course.accessibleUnitCount > 0 && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Layers className="h-3 w-3" />
                           {course.accessibleUnitCount} Tage

@@ -4,17 +4,26 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { Profile, Course, Module, Unit, AccessGrant } from "@/lib/types";
-import { setAccessGrant, setCourseLevelAccess } from "@/lib/actions/access";
+import { setAccessGrant, setCourseLevelAccess, updateGrantExpiration } from "@/lib/actions/access";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
   Layers,
-  Calendar,
+  Calendar as CalendarDays,
+  CalendarIcon,
   Loader2,
+  X,
 } from "lucide-react";
 
 interface MemberAccessClientProps {
@@ -58,35 +67,61 @@ export function MemberAccessClient({
     [grants]
   );
 
+  const getGrant = useCallback(
+    (type: "course" | "module" | "unit", id: string): AccessGrant | undefined => {
+      return grants.find((g) => {
+        if (type === "course")
+          return g.course_id === id && !g.module_id && !g.unit_id;
+        if (type === "module") return g.module_id === id && !g.unit_id;
+        return g.unit_id === id;
+      });
+    },
+    [grants]
+  );
+
+  function isExpired(type: "course" | "module" | "unit", id: string): boolean {
+    const grant = getGrant(type, id);
+    if (!grant || !grant.is_granted || !grant.expires_at) return false;
+    return new Date(grant.expires_at) < new Date();
+  }
+
   function getEffectiveAccess(
     type: "course" | "module" | "unit",
     id: string,
     courseId?: string,
     moduleId?: string | null
   ): boolean {
-    // Check specific grant
     const specific = isGranted(type, id);
-    if (specific !== null) return specific;
+    if (specific !== null) {
+      if (isExpired(type, id)) return false;
+      return specific;
+    }
 
-    // Fall back to parent
     if (type === "unit" && moduleId) {
       const moduleGrant = isGranted("module", moduleId);
-      if (moduleGrant !== null) return moduleGrant;
+      if (moduleGrant !== null) {
+        if (isExpired("module", moduleId)) return false;
+        return moduleGrant;
+      }
     }
     if (type === "unit" || type === "module") {
       const courseGrant = isGranted("course", courseId!);
-      if (courseGrant !== null) return courseGrant;
+      if (courseGrant !== null) {
+        if (isExpired("course", courseId!)) return false;
+        return courseGrant;
+      }
     }
 
-    return false; // Default: no access
+    return false;
   }
 
-  function getCourseStatus(courseId: string): "full" | "partial" | "none" {
+  function getCourseStatus(courseId: string): "full" | "partial" | "none" | "expired" {
     const courseGrant = isGranted("course", courseId);
     const courseModules = modules.filter((m) => m.course_id === courseId);
     const courseUnits = units.filter((u) => u.course_id === courseId);
 
-    // Check if any specific overrides exist
+    if (courseGrant === true && isExpired("course", courseId)) return "expired";
+
     const hasModuleGrants = courseModules.some(
       (m) => isGranted("module", m.id) !== null
     );
@@ -98,7 +133,6 @@ export function MemberAccessClient({
     if (courseGrant === true && (hasModuleGrants || hasUnitGrants))
       return "partial";
     if (courseGrant === false || courseGrant === null) {
-      // Check if any lower-level grants exist
       if (hasModuleGrants || hasUnitGrants) return "partial";
       return "none";
     }
@@ -118,10 +152,8 @@ export function MemberAccessClient({
     if ("error" in result && result.error) {
       toast.error(result.error);
     } else {
-      // Update local state: set course grant, remove sub-grants
       setGrants((prev) => {
         const filtered = prev.filter((g) => {
-          // Remove all grants related to this course's modules/units
           const courseModuleIds = modules
             .filter((m) => m.course_id === courseId)
             .map((m) => m.id);
@@ -143,12 +175,43 @@ export function MemberAccessClient({
             module_id: null,
             unit_id: null,
             is_granted: newValue,
+            expires_at: null,
             created_at: new Date().toISOString(),
           },
         ];
       });
       toast.success(
         newValue ? "Lehrgang freigeschaltet." : "Lehrgang gesperrt."
+      );
+    }
+
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  async function handleCourseExpirationChange(courseId: string, date: Date | undefined) {
+    const key = `exp-course-${courseId}`;
+    const expiresAt = date ? date.toISOString() : null;
+    setLoadingIds((prev) => new Set([...prev, key]));
+
+    const result = await updateGrantExpiration({
+      userId: member.id,
+      courseId,
+      expiresAt,
+    });
+
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+    } else {
+      setGrants((prev) =>
+        prev.map((g) =>
+          g.course_id === courseId && !g.module_id && !g.unit_id
+            ? { ...g, expires_at: expiresAt }
+            : g
+        )
       );
     }
 
@@ -190,6 +253,7 @@ export function MemberAccessClient({
             module_id: moduleId,
             unit_id: null,
             is_granted: newValue,
+            expires_at: null,
             created_at: new Date().toISOString(),
           },
         ];
@@ -232,6 +296,7 @@ export function MemberAccessClient({
             module_id: null,
             unit_id: unitId,
             is_granted: newValue,
+            expires_at: null,
             created_at: new Date().toISOString(),
           },
         ];
@@ -251,7 +316,7 @@ export function MemberAccessClient({
         <Button variant="ghost" size="sm" className="mb-2" asChild>
           <Link href="/admin/members">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Zurück zu Mitglieder
+            Zurück zu Teilnehmer
           </Link>
         </Button>
         <h1 className="text-2xl font-semibold">
@@ -278,6 +343,8 @@ export function MemberAccessClient({
               (u) => u.course_id === course.id
             );
             const courseGrantValue = isGranted("course", course.id);
+            const courseGrant = getGrant("course", course.id);
+            const courseExpired = isExpired("course", course.id);
 
             return (
               <Card key={course.id}>
@@ -305,9 +372,14 @@ export function MemberAccessClient({
                               ? "bg-green-500"
                               : status === "partial"
                               ? "bg-orange-500"
+                              : status === "expired"
+                              ? "bg-yellow-500"
                               : "bg-red-500"
                           }`}
                         />
+                        {status === "expired" && (
+                          <Badge variant="destructive" className="text-xs">Abgelaufen</Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -315,18 +387,68 @@ export function MemberAccessClient({
                           {courseModules.length} Module
                         </span>
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
+                          <CalendarDays className="h-3 w-3" />
                           {courseUnits.length} Tage
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Expiration date for course-level grant */}
+                      {courseGrantValue === true && (
+                        <div className="flex items-center gap-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={loadingIds.has(`exp-course-${course.id}`)}
+                              >
+                                {loadingIds.has(`exp-course-${course.id}`) ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : (
+                                  <CalendarIcon className="mr-1 h-3 w-3" />
+                                )}
+                                {courseGrant?.expires_at
+                                  ? new Date(courseGrant.expires_at).toLocaleDateString("de-CH")
+                                  : "Kein Ablauf"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  courseGrant?.expires_at
+                                    ? new Date(courseGrant.expires_at)
+                                    : undefined
+                                }
+                                onSelect={(date) =>
+                                  handleCourseExpirationChange(course.id, date)
+                                }
+                                disabled={(date) => date < new Date()}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          {courseGrant?.expires_at && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() =>
+                                handleCourseExpirationChange(course.id, undefined)
+                              }
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
                       {loadingIds.has(`course-${course.id}`) && (
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       )}
                       <Switch
-                        checked={courseGrantValue === true}
+                        checked={courseGrantValue === true && !courseExpired}
                         onCheckedChange={(v) =>
                           handleToggleCourse(course.id, v)
                         }

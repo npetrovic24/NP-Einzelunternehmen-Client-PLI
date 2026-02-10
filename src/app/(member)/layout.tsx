@@ -36,7 +36,7 @@ export default async function MemberLayout({
           </Link>
         </div>
       )}
-      <MemberHeader userName={profile?.full_name || user.email || "Mitglied"} />
+      <MemberHeader userName={profile?.full_name || user.email || "Teilnehmer"} />
       <main className="flex-1 overflow-y-auto bg-secondary">
         {children}
       </main>

@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -72,7 +71,7 @@ export async function getCourseAccess(courseId: string) {
   const { data: members } = await supabase
     .from("profiles")
     .select("*")
-    .eq("role", "member")
+    .eq("role", "participant")
     .order("full_name", { ascending: true });
 
   const { data: grants } = await supabase
@@ -95,11 +94,11 @@ export async function setAccessGrant(params: {
   moduleId?: string;
   unitId?: string;
   isGranted: boolean;
+  expiresAt?: string | null;
 }) {
   await requireAdmin();
   const supabase = await createClient();
 
-  // Build filter for existing grant
   let query = supabase
     .from("access_grants")
     .select("id")
@@ -116,25 +115,65 @@ export async function setAccessGrant(params: {
   const { data: existing } = await query;
 
   if (existing && existing.length > 0) {
-    // Update existing
+    const updateData: Record<string, unknown> = { is_granted: params.isGranted };
+    if (params.expiresAt !== undefined) {
+      updateData.expires_at = params.expiresAt || null;
+    }
     const { error } = await supabase
       .from("access_grants")
-      .update({ is_granted: params.isGranted })
+      .update(updateData)
       .eq("id", existing[0].id);
     if (error) return { error: error.message };
   } else {
-    // Insert new
     const { error } = await supabase.from("access_grants").insert({
       user_id: params.userId,
       course_id: params.courseId || null,
       module_id: params.moduleId || null,
       unit_id: params.unitId || null,
       is_granted: params.isGranted,
+      expires_at: params.expiresAt || null,
     });
     if (error) return { error: error.message };
   }
 
   return { success: true };
+}
+
+export async function updateGrantExpiration(params: {
+  userId: string;
+  courseId?: string;
+  moduleId?: string;
+  unitId?: string;
+  expiresAt: string | null;
+}) {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("access_grants")
+    .select("id")
+    .eq("user_id", params.userId);
+
+  if (params.courseId && !params.moduleId && !params.unitId) {
+    query = query.eq("course_id", params.courseId).is("module_id", null).is("unit_id", null);
+  } else if (params.moduleId && !params.unitId) {
+    query = query.eq("module_id", params.moduleId).is("unit_id", null);
+  } else if (params.unitId) {
+    query = query.eq("unit_id", params.unitId);
+  }
+
+  const { data: existing } = await query;
+
+  if (existing && existing.length > 0) {
+    const { error } = await supabase
+      .from("access_grants")
+      .update({ expires_at: params.expiresAt })
+      .eq("id", existing[0].id);
+    if (error) return { error: error.message };
+    return { success: true };
+  }
+
+  return { error: "Kein Zugang gefunden." };
 }
 
 export async function setCourseAccessForAll(
@@ -144,13 +183,12 @@ export async function setCourseAccessForAll(
   await requireAdmin();
   const supabase = await createClient();
 
-  // Get all members
   const { data: members } = await supabase
     .from("profiles")
     .select("id")
-    .eq("role", "member");
+    .eq("role", "participant");
 
-  if (!members) return { error: "Keine Mitglieder gefunden" };
+  if (!members) return { error: "Keine Teilnehmer gefunden" };
 
   for (const member of members) {
     await setAccessGrant({
@@ -167,21 +205,20 @@ export async function setCourseLevelAccess(params: {
   userId: string;
   courseId: string;
   isGranted: boolean;
+  expiresAt?: string | null;
 }) {
   await requireAdmin();
   const supabase = await createClient();
 
-  // Set course-level grant
   const result = await setAccessGrant({
     userId: params.userId,
     courseId: params.courseId,
     isGranted: params.isGranted,
+    expiresAt: params.expiresAt,
   });
 
   if ("error" in result) return result;
 
-  // Remove all module-level and unit-level grants for this course
-  // so the course-level grant takes effect cleanly
   const { data: modules } = await supabase
     .from("modules")
     .select("id")

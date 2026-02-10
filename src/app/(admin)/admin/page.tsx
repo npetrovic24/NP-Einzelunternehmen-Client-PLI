@@ -20,7 +20,7 @@ export default async function AdminDashboardPage() {
       .from("profiles")
       .select("*", { count: "exact", head: true })
       .eq("is_active", true)
-      .eq("role", "member"),
+      .eq("role", "participant"),
     supabase.from("courses").select("*", { count: "exact", head: true }),
     supabase
       .from("courses")
@@ -34,14 +34,14 @@ export default async function AdminDashboardPage() {
     supabase
       .from("profiles")
       .select("full_name, email, created_at, is_active")
-      .eq("role", "member")
+      .eq("role", "participant")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
 
   const stats = [
     {
-      label: "Mitglieder",
+      label: "Teilnehmer",
       value: membersCount ?? 0,
       sub: `${activeMembersCount ?? 0} aktiv`,
       icon: Users,
@@ -103,7 +103,7 @@ export default async function AdminDashboardPage() {
         <div className="mt-8">
           <h2 className="mb-4 text-lg font-semibold flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            Letzte Mitglieder
+            Letzte Teilnehmer
           </h2>
           <Card>
             <CardContent className="p-0">

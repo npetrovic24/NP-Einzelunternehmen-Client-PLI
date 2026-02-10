@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "member";
+export type UserRole = "admin" | "participant";
 
 export interface Profile {
   id: string;
@@ -55,5 +55,6 @@ export interface AccessGrant {
   module_id: string | null;
   unit_id: string | null;
   is_granted: boolean;
+  expires_at: string | null;
   created_at: string;
 }

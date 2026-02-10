@@ -10,6 +10,24 @@ export interface UserAccessData {
 }
 
 /**
+ * Checks if a grant is currently active (not expired).
+ */
+function isGrantActive(grant: AccessGrant): boolean {
+  if (!grant.is_granted) return false;
+  if (grant.expires_at && new Date(grant.expires_at) < new Date()) return false;
+  return true;
+}
+
+/**
+ * Checks if a grant is expired (was granted but has passed its expiration date).
+ */
+export function isGrantExpired(grant: AccessGrant): boolean {
+  if (!grant.is_granted) return false;
+  if (grant.expires_at && new Date(grant.expires_at) < new Date()) return true;
+  return false;
+}
+
+/**
  * Determines if a user has access to a specific unit.
  * "Most specific rule wins":
  *   Unit grant > Module grant > Course grant > no grant (denied)
@@ -20,21 +38,21 @@ export function hasUnitAccess(
 ): boolean {
   // Check unit-level grant first (most specific)
   const unitGrant = grants.find((g) => g.unit_id === unit.id);
-  if (unitGrant) return unitGrant.is_granted;
+  if (unitGrant) return isGrantActive(unitGrant);
 
   // Check module-level grant
   if (unit.module_id) {
     const moduleGrant = grants.find(
       (g) => g.module_id === unit.module_id && !g.unit_id
     );
-    if (moduleGrant) return moduleGrant.is_granted;
+    if (moduleGrant) return isGrantActive(moduleGrant);
   }
 
   // Check course-level grant
   const courseGrant = grants.find(
     (g) => g.course_id === unit.course_id && !g.module_id && !g.unit_id
   );
-  if (courseGrant) return courseGrant.is_granted;
+  if (courseGrant) return isGrantActive(courseGrant);
 
   // No grant = no access
   return false;
@@ -50,16 +68,15 @@ export function hasModuleAccess(
 ): boolean {
   const moduleUnits = units.filter((u) => u.module_id === module.id);
   if (moduleUnits.length === 0) {
-    // Module with no units - check module grant or course grant
     const moduleGrant = grants.find(
       (g) => g.module_id === module.id && !g.unit_id
     );
-    if (moduleGrant) return moduleGrant.is_granted;
+    if (moduleGrant) return isGrantActive(moduleGrant);
 
     const courseGrant = grants.find(
       (g) => g.course_id === module.course_id && !g.module_id && !g.unit_id
     );
-    if (courseGrant) return courseGrant.is_granted;
+    if (courseGrant) return isGrantActive(courseGrant);
 
     return false;
   }
@@ -76,18 +93,42 @@ export function hasCourseAccess(
 ): boolean {
   const courseUnits = units.filter((u) => u.course_id === course.id);
   if (courseUnits.length === 0) {
-    // Course with no units - check course grant
     const courseGrant = grants.find(
       (g) => g.course_id === course.id && !g.module_id && !g.unit_id
     );
-    return courseGrant?.is_granted ?? false;
+    return courseGrant ? isGrantActive(courseGrant) : false;
   }
   return courseUnits.some((u) => hasUnitAccess(grants, u));
 }
 
 /**
+ * Checks if a course grant exists but is expired (for dashboard display).
+ */
+export function isCourseExpired(
+  grants: AccessGrant[],
+  course: Course,
+  units: Unit[]
+): boolean {
+  const courseGrant = grants.find(
+    (g) => g.course_id === course.id && !g.module_id && !g.unit_id
+  );
+  if (courseGrant && isGrantExpired(courseGrant)) return true;
+
+  const courseUnits = units.filter((u) => u.course_id === course.id);
+  if (courseUnits.length === 0) return false;
+
+  const hasAnyActiveUnit = courseUnits.some((u) => hasUnitAccess(grants, u));
+  const hasAnyGrant = grants.some(
+    (g) =>
+      (g.course_id === course.id) ||
+      courseUnits.some((u) => g.unit_id === u.id)
+  );
+
+  return !hasAnyActiveUnit && hasAnyGrant;
+}
+
+/**
  * Fetches all access data needed for the member portal.
- * Returns null if user is not authenticated.
  */
 export async function getUserAccessData(
   userId: string
@@ -121,7 +162,7 @@ export async function getUserAccessData(
     courses: coursesRes.data || [],
     modules: modulesRes.data || [],
     units: unitsRes.data || [],
-    role: (profileRes.data?.role as UserRole) || "member",
+    role: (profileRes.data?.role as UserRole) || "participant",
   };
 }
 
@@ -131,7 +172,6 @@ export async function getUserAccessData(
 export async function getAccessibleCourses(userId: string) {
   const data = await getUserAccessData(userId);
 
-  // Admins see all active courses
   if (data.role === "admin") return data.courses;
 
   return data.courses.filter((course) =>
@@ -142,10 +182,12 @@ export async function getAccessibleCourses(userId: string) {
 export interface CourseWithCounts extends Course {
   unitCount: number;
   accessibleUnitCount: number;
+  isExpired: boolean;
 }
 
 /**
  * Gets courses with unit counts for the dashboard.
+ * Includes expired courses so they can be shown greyed out.
  */
 export async function getAccessibleCoursesWithCounts(
   userId: string
@@ -154,18 +196,24 @@ export async function getAccessibleCoursesWithCounts(
   const isAdmin = data.role === "admin";
 
   return data.courses
-    .filter((course) =>
-      isAdmin || hasCourseAccess(data.grants, course, data.units)
-    )
+    .filter((course) => {
+      if (isAdmin) return true;
+      return (
+        hasCourseAccess(data.grants, course, data.units) ||
+        isCourseExpired(data.grants, course, data.units)
+      );
+    })
     .map((course) => {
       const courseUnits = data.units.filter((u) => u.course_id === course.id);
       const accessibleUnits = isAdmin
         ? courseUnits
         : courseUnits.filter((u) => hasUnitAccess(data.grants, u));
+      const expired = !isAdmin && isCourseExpired(data.grants, course, data.units);
       return {
         ...course,
         unitCount: courseUnits.length,
         accessibleUnitCount: accessibleUnits.length,
+        isExpired: expired,
       };
     });
 }
@@ -185,13 +233,11 @@ export async function getCourseWithAccess(userId: string, courseId: string) {
   const courseModules = data.modules.filter((m) => m.course_id === courseId);
   const courseUnits = data.units.filter((u) => u.course_id === courseId);
 
-  // Mark each unit with access status (admins have access to all)
   const unitsWithAccess = courseUnits.map((unit) => ({
     ...unit,
     hasAccess: isAdmin || hasUnitAccess(data.grants, unit),
   }));
 
-  // Mark each module with access status
   const modulesWithAccess = courseModules.map((mod) => ({
     ...mod,
     hasAccess: isAdmin || hasModuleAccess(data.grants, mod, courseUnits),
@@ -220,14 +266,12 @@ export async function getUnitContent(userId: string, courseId: string, unitId: s
 
   if (!isAdmin && !hasUnitAccess(data.grants, unit)) return null;
 
-  // For non-canva blocks, fetch content too
   const { data: fullBlocks } = await supabase
     .from("content_blocks")
     .select("*")
     .eq("unit_id", unitId)
     .order("sort_order", { ascending: true });
 
-  // Strip canva URLs from the response - they must be fetched via API route
   const safeBlocks = (fullBlocks || []).map((block) => {
     if (block.type === "canva_embed") {
       return {
@@ -238,7 +282,6 @@ export async function getUnitContent(userId: string, courseId: string, unitId: s
     return block;
   });
 
-  // Get accessible units for prev/next navigation
   const courseUnits = data.units.filter((u) => u.course_id === courseId);
   const accessibleUnits = isAdmin
     ? courseUnits

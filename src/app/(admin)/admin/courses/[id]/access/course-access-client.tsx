@@ -4,10 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { Course, Profile, AccessGrant } from "@/lib/types";
-import { setAccessGrant, setCourseAccessForAll } from "@/lib/actions/access";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { setAccessGrant, updateGrantExpiration, setCourseAccessForAll } from "@/lib/actions/access";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -22,6 +29,8 @@ import {
   Users,
   CheckCircle,
   XCircle,
+  CalendarIcon,
+  X,
 } from "lucide-react";
 
 interface CourseAccessClientProps {
@@ -39,12 +48,22 @@ export function CourseAccessClient({
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  function getMemberGrant(memberId: string): boolean {
-    const grant = grants.find((g) => g.user_id === memberId);
+  function getMemberGrant(memberId: string): AccessGrant | undefined {
+    return grants.find((g) => g.user_id === memberId);
+  }
+
+  function isMemberGranted(memberId: string): boolean {
+    const grant = getMemberGrant(memberId);
     return grant ? grant.is_granted : false;
   }
 
-  const grantedCount = members.filter((m) => getMemberGrant(m.id)).length;
+  function isMemberExpired(memberId: string): boolean {
+    const grant = getMemberGrant(memberId);
+    if (!grant || !grant.is_granted || !grant.expires_at) return false;
+    return new Date(grant.expires_at) < new Date();
+  }
+
+  const grantedCount = members.filter((m) => isMemberGranted(m.id) && !isMemberExpired(m.id)).length;
 
   async function handleToggle(memberId: string, newValue: boolean) {
     setLoadingIds((prev) => new Set([...prev, memberId]));
@@ -74,6 +93,7 @@ export function CourseAccessClient({
             module_id: null,
             unit_id: null,
             is_granted: newValue,
+            expires_at: null,
             created_at: new Date().toISOString(),
           },
         ];
@@ -87,6 +107,33 @@ export function CourseAccessClient({
     });
   }
 
+  async function handleExpirationChange(memberId: string, date: Date | undefined) {
+    const expiresAt = date ? date.toISOString() : null;
+    setLoadingIds((prev) => new Set([...prev, `exp-${memberId}`]));
+
+    const result = await updateGrantExpiration({
+      userId: memberId,
+      courseId: course.id,
+      expiresAt,
+    });
+
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+    } else {
+      setGrants((prev) =>
+        prev.map((g) =>
+          g.user_id === memberId ? { ...g, expires_at: expiresAt } : g
+        )
+      );
+    }
+
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(`exp-${memberId}`);
+      return next;
+    });
+  }
+
   async function handleBulkAction(isGranted: boolean) {
     setBulkLoading(true);
 
@@ -95,7 +142,6 @@ export function CourseAccessClient({
     if ("error" in result && result.error) {
       toast.error(result.error);
     } else {
-      // Update all grants locally
       setGrants(
         members.map((m) => ({
           id: crypto.randomUUID(),
@@ -104,13 +150,14 @@ export function CourseAccessClient({
           module_id: null,
           unit_id: null,
           is_granted: isGranted,
+          expires_at: null,
           created_at: new Date().toISOString(),
         }))
       );
       toast.success(
         isGranted
-          ? "Alle Mitglieder freigeschaltet."
-          : "Alle Mitglieder gesperrt."
+          ? "Alle Teilnehmer freigeschaltet."
+          : "Alle Teilnehmer gesperrt."
       );
     }
 
@@ -132,7 +179,7 @@ export function CourseAccessClient({
               Zugriffe: {course.name}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {grantedCount} von {members.length} Mitgliedern freigeschaltet
+              {grantedCount} von {members.length} Teilnehmern freigeschaltet
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -171,7 +218,7 @@ export function CourseAccessClient({
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Users className="mb-4 h-12 w-12 text-muted-foreground/50" />
             <p className="text-lg font-medium text-muted-foreground">
-              Noch keine Mitglieder
+              Noch keine Teilnehmer
             </p>
           </CardContent>
         </Card>
@@ -183,12 +230,15 @@ export function CourseAccessClient({
                 <TableHead>Name</TableHead>
                 <TableHead>E-Mail</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Gültig bis</TableHead>
                 <TableHead className="text-right">Zugriff</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {members.map((member) => {
-                const hasAccess = getMemberGrant(member.id);
+                const hasAccess = isMemberGranted(member.id);
+                const expired = isMemberExpired(member.id);
+                const grant = getMemberGrant(member.id);
                 return (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
@@ -196,18 +246,70 @@ export function CourseAccessClient({
                     </TableCell>
                     <TableCell>{member.email}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center gap-1 text-sm ${
-                          hasAccess ? "text-green-600" : "text-red-500"
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-2 w-2 rounded-full ${
-                            hasAccess ? "bg-green-500" : "bg-red-500"
-                          }`}
-                        />
-                        {hasAccess ? "Freigeschaltet" : "Gesperrt"}
-                      </span>
+                      {expired ? (
+                        <Badge variant="destructive">Abgelaufen</Badge>
+                      ) : hasAccess ? (
+                        <span className="inline-flex items-center gap-1 text-sm text-green-600">
+                          <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                          Freigeschaltet
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-sm text-red-500">
+                          <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                          Gesperrt
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {hasAccess && (
+                        <div className="flex items-center gap-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={loadingIds.has(`exp-${member.id}`)}
+                              >
+                                {loadingIds.has(`exp-${member.id}`) ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : (
+                                  <CalendarIcon className="mr-1 h-3 w-3" />
+                                )}
+                                {grant?.expires_at
+                                  ? new Date(grant.expires_at).toLocaleDateString("de-CH")
+                                  : "Kein Ablauf"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  grant?.expires_at
+                                    ? new Date(grant.expires_at)
+                                    : undefined
+                                }
+                                onSelect={(date) =>
+                                  handleExpirationChange(member.id, date)
+                                }
+                                disabled={(date) => date < new Date()}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          {grant?.expires_at && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() =>
+                                handleExpirationChange(member.id, undefined)
+                              }
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -215,7 +317,7 @@ export function CourseAccessClient({
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         )}
                         <Switch
-                          checked={hasAccess}
+                          checked={hasAccess && !expired}
                           onCheckedChange={(v) =>
                             handleToggle(member.id, v)
                           }

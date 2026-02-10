@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Profile } from "@/lib/types";
 import {
   createMember,
+  updateMember,
   toggleMemberStatus,
   resetMemberPassword,
 } from "@/lib/actions/members";
@@ -21,6 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -37,25 +45,46 @@ import {
   Shield,
   ShieldOff,
   Loader2,
+  Pencil,
+  CalendarIcon,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
-interface MembersClientProps {
-  initialMembers: Profile[];
+interface CourseOption {
+  id: string;
+  name: string;
 }
 
-export function MembersClient({ initialMembers }: MembersClientProps) {
+interface CourseAssignment {
+  courseId: string;
+  expiresAt: string | null;
+}
+
+interface MembersClientProps {
+  initialMembers: Profile[];
+  courses: CourseOption[];
+}
+
+export function MembersClient({ initialMembers, courses }: MembersClientProps) {
   const [members, setMembers] = useState(initialMembers);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [resetMember, setResetMember] = useState<Profile | null>(null);
+  const [editMember, setEditMember] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Create form state
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [courseAssignments, setCourseAssignments] = useState<CourseAssignment[]>([]);
+
+  // Edit form state
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
 
   // Reset form state
   const [newResetPassword, setNewResetPassword] = useState("");
@@ -70,11 +99,32 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
     );
   }, [members, search]);
 
-  const activeCount = members.filter((m) => m.is_active).length;
+  const activeCount = members.filter((m) => m.is_active && m.role !== "admin").length;
+  const participantCount = members.filter((m) => m.role !== "admin").length;
+
+  function toggleCourseAssignment(courseId: string) {
+    setCourseAssignments((prev) => {
+      const existing = prev.find((ca) => ca.courseId === courseId);
+      if (existing) {
+        return prev.filter((ca) => ca.courseId !== courseId);
+      }
+      return [...prev, { courseId, expiresAt: null }];
+    });
+  }
+
+  function setCourseExpiration(courseId: string, date: Date | undefined) {
+    setCourseAssignments((prev) =>
+      prev.map((ca) =>
+        ca.courseId === courseId
+          ? { ...ca, expiresAt: date ? date.toISOString() : null }
+          : ca
+      )
+    );
+  }
 
   async function handleCreate() {
     if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
-      toast.error("Bitte alle Felder ausfüllen.");
+      toast.error("Bitte alle Pflichtfelder ausfüllen.");
       return;
     }
     if (newPassword.length < 8) {
@@ -87,6 +137,7 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
       email: newEmail,
       password: newPassword,
       fullName: newName,
+      courseAssignments: courseAssignments.length > 0 ? courseAssignments : undefined,
     });
     setLoading(false);
 
@@ -95,15 +146,14 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
       return;
     }
 
-    toast.success(`Mitglied "${newName}" wurde angelegt.`);
-    // Add to local state
+    toast.success(`Teilnehmer "${newName}" wurde angelegt.`);
     if (result.data) {
       setMembers((prev) => [
         {
           id: result.data.id,
           email: newEmail,
           full_name: newName,
-          role: "member",
+          role: "participant",
           is_active: true,
           created_at: new Date().toISOString(),
         },
@@ -114,6 +164,37 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
     setNewName("");
     setNewEmail("");
     setNewPassword("");
+    setCourseAssignments([]);
+  }
+
+  async function handleEdit() {
+    if (!editMember || !editName.trim() || !editEmail.trim()) {
+      toast.error("Bitte alle Felder ausfüllen.");
+      return;
+    }
+
+    setLoading(true);
+    const result = await updateMember(editMember.id, {
+      fullName: editName,
+      email: editEmail,
+    });
+    setLoading(false);
+
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success(`Teilnehmer "${editName}" wurde aktualisiert.`);
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === editMember.id
+          ? { ...m, full_name: editName, email: editEmail }
+          : m
+      )
+    );
+    setEditOpen(false);
+    setEditMember(null);
   }
 
   async function handleToggle(member: Profile) {
@@ -168,27 +249,34 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
     setResetOpen(true);
   }
 
+  function openEditDialog(member: Profile) {
+    setEditMember(member);
+    setEditName(member.full_name);
+    setEditEmail(member.email);
+    setEditOpen(true);
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Mitglieder</h1>
+          <h1 className="text-2xl font-semibold">Teilnehmer</h1>
           <p className="text-sm text-muted-foreground">
-            {members.length} Mitglieder total, {activeCount} aktiv
+            {participantCount} Teilnehmer total, {activeCount} aktiv
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
-              Neues Mitglied
+              Neuer Teilnehmer
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Neues Mitglied anlegen</DialogTitle>
+              <DialogTitle>Neuen Teilnehmer anlegen</DialogTitle>
               <DialogDescription>
-                Erstelle ein neues Mitglied mit E-Mail und Passwort.
+                Erstelle einen neuen Teilnehmer mit E-Mail und Passwort.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -221,6 +309,92 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
               </div>
+
+              {/* Course assignments */}
+              {courses.length > 0 && (
+                <div className="grid gap-2">
+                  <Label>Kurse zuweisen (optional)</Label>
+                  <div className="space-y-2 rounded-md border p-3 max-h-60 overflow-y-auto">
+                    {courses.map((course) => {
+                      const assignment = courseAssignments.find(
+                        (ca) => ca.courseId === course.id
+                      );
+                      const isSelected = !!assignment;
+                      return (
+                        <div key={course.id} className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`course-${course.id}`}
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                toggleCourseAssignment(course.id)
+                              }
+                            />
+                            <label
+                              htmlFor={`course-${course.id}`}
+                              className="flex-1 text-sm cursor-pointer"
+                            >
+                              {course.name}
+                            </label>
+                          </div>
+                          {isSelected && (
+                            <div className="ml-6 flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                Gültig bis:
+                              </span>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                  >
+                                    <CalendarIcon className="mr-1 h-3 w-3" />
+                                    {assignment?.expiresAt
+                                      ? new Date(
+                                          assignment.expiresAt
+                                        ).toLocaleDateString("de-CH")
+                                      : "Kein Ablauf"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-auto p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    selected={
+                                      assignment?.expiresAt
+                                        ? new Date(assignment.expiresAt)
+                                        : undefined
+                                    }
+                                    onSelect={(date) =>
+                                      setCourseExpiration(course.id, date)
+                                    }
+                                    disabled={(date) => date < new Date()}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              {assignment?.expiresAt && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() =>
+                                    setCourseExpiration(course.id, undefined)
+                                  }
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
@@ -268,7 +442,7 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
             {filteredMembers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  {search ? "Keine Mitglieder gefunden." : "Noch keine Mitglieder vorhanden."}
+                  {search ? "Keine Teilnehmer gefunden." : "Noch keine Teilnehmer vorhanden."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -288,7 +462,7 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
                       {member.role === "admin" ? (
                         <><Shield className="mr-1 h-3 w-3" />Admin</>
                       ) : (
-                        "Mitglied"
+                        "Teilnehmer"
                       )}
                     </Badge>
                   </TableCell>
@@ -315,6 +489,14 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
                     <div className="flex items-center justify-end gap-1">
                       {member.role !== "admin" && (
                         <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(member)}
+                            title="Bearbeiten"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -374,6 +556,48 @@ export function MembersClient({ initialMembers }: MembersClientProps) {
             <Button onClick={handleResetPassword} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Zurücksetzen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Teilnehmer bearbeiten</DialogTitle>
+            <DialogDescription>
+              Name und E-Mail von {editMember?.full_name} ändern.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                placeholder="Vorname Nachname"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-email">E-Mail</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                placeholder="name@example.com"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleEdit} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Speichern
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,8 +1,11 @@
-import { getMembers } from "@/lib/actions/members";
+import { getMembers, getAllCourses } from "@/lib/actions/members";
 import { MembersClient } from "./members-client";
 
 export default async function MembersPage() {
-  const members = await getMembers();
+  const [members, courses] = await Promise.all([
+    getMembers(),
+    getAllCourses(),
+  ]);
 
-  return <MembersClient initialMembers={members} />;
+  return <MembersClient initialMembers={members} courses={courses} />;
 }
