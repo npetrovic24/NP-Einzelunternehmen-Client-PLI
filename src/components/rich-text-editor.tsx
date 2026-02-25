@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { Bold, Italic, List, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,10 +21,22 @@ export function RichTextEditor({
   disabled = false,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const isInternalChange = useRef(false);
+
+  // Only set innerHTML from outside when content is reset (e.g. form clear)
+  useEffect(() => {
+    if (!isInternalChange.current && editorRef.current) {
+      if (content === "" && editorRef.current.innerHTML !== "") {
+        editorRef.current.innerHTML = "";
+      }
+    }
+    isInternalChange.current = false;
+  }, [content]);
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
+      isInternalChange.current = true;
       onChange(editorRef.current.innerHTML);
     }
     editorRef.current?.focus();
@@ -32,6 +44,7 @@ export function RichTextEditor({
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
+      isInternalChange.current = true;
       onChange(editorRef.current.innerHTML);
     }
   }, [onChange]);
@@ -40,6 +53,17 @@ export function RichTextEditor({
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);
+  }, []);
+
+  // Show/hide placeholder
+  const handleFocus = useCallback(() => {
+    editorRef.current?.classList.remove("is-empty");
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    if (editorRef.current && !editorRef.current.textContent?.trim()) {
+      editorRef.current.classList.add("is-empty");
+    }
   }, []);
 
   return (
@@ -96,11 +120,12 @@ export function RichTextEditor({
         suppressContentEditableWarning
         onInput={handleInput}
         onPaste={handlePaste}
-        className="prose prose-sm max-w-none px-4 py-3 focus:outline-none text-foreground
-          [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-muted-foreground"
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        className="prose prose-sm max-w-none px-4 py-3 focus:outline-none text-foreground is-empty
+          [&.is-empty]:before:content-[attr(data-placeholder)] [&.is-empty]:before:text-muted-foreground [&.is-empty]:before:pointer-events-none"
         style={{ minHeight }}
         data-placeholder={placeholder}
-        dangerouslySetInnerHTML={{ __html: content }}
       />
     </div>
   );
