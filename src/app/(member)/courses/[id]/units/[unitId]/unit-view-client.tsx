@@ -185,16 +185,16 @@ export function UnitViewClient({
               <ContentBlockRenderer key={block.id} block={block} />
             ))}
           </div>
+        )}
 
-          {/* Reflexion section */}
-          {assignment && (
-            <div className="mt-12 pt-8 border-t border-border/50">
-              <ReflexionForm
-                assignment={assignment}
-                existingSubmission={existingSubmission}
-              />
-            </div>
-          )}
+        {/* Reflexion section */}
+        {assignment && (
+          <div className="mt-12 pt-8 border-t border-border/50">
+            <ReflexionForm
+              assignment={assignment}
+              existingSubmission={existingSubmission}
+            />
+          </div>
         )}
       </div>
 
