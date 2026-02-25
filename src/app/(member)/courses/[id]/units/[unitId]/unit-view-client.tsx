@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { ContentBlock, Course, Unit } from "@/lib/types";
+import type { ContentBlock, Course, Unit, Assignment, Feedback } from "@/lib/types";
 import { CanvaEmbed } from "./canva-embed";
+import { ReflexionForm } from "@/components/reflexion-form";
 
 interface UnitViewClientProps {
   course: Course;
@@ -23,6 +24,14 @@ interface UnitViewClientProps {
   prevUnit: Unit | null;
   nextUnit: Unit | null;
   courseId: string;
+  assignment?: Assignment | null;
+  existingSubmission?: {
+    id: string;
+    content: string;
+    status: string;
+    submitted_at: string;
+    feedback?: Feedback[];
+  } | null;
 }
 
 function formatFileSize(bytes: number): string {
@@ -122,6 +131,8 @@ export function UnitViewClient({
   prevUnit,
   nextUnit,
   courseId,
+  assignment,
+  existingSubmission,
 }: UnitViewClientProps) {
   // Scroll to top when unit changes
   useEffect(() => {
@@ -174,6 +185,16 @@ export function UnitViewClient({
               <ContentBlockRenderer key={block.id} block={block} />
             ))}
           </div>
+
+          {/* Reflexion section */}
+          {assignment && (
+            <div className="mt-12 pt-8 border-t border-border/50">
+              <ReflexionForm
+                assignment={assignment}
+                existingSubmission={existingSubmission}
+              />
+            </div>
+          )}
         )}
       </div>
 

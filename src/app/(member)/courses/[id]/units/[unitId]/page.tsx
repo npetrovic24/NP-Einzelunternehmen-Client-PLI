@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUnitContent } from "@/lib/access";
+import { getAssignmentForUnit, getMySubmissionForAssignment } from "@/lib/actions/submissions";
 import { UnitViewClient } from "./unit-view-client";
 
 export default async function UnitViewPage({
@@ -19,8 +20,14 @@ export default async function UnitViewPage({
   const unitData = await getUnitContent(user.id, id, unitId);
 
   if (!unitData) {
-    // No access to this unit — redirect to course page
     redirect(`/courses/${id}`);
+  }
+
+  // Load assignment for this unit + existing submission
+  const assignment = await getAssignmentForUnit(unitId);
+  let existingSubmission = null;
+  if (assignment) {
+    existingSubmission = await getMySubmissionForAssignment(assignment.id);
   }
 
   return (
@@ -31,6 +38,8 @@ export default async function UnitViewPage({
       prevUnit={unitData.prevUnit}
       nextUnit={unitData.nextUnit}
       courseId={id}
+      assignment={assignment}
+      existingSubmission={existingSubmission}
     />
   );
 }

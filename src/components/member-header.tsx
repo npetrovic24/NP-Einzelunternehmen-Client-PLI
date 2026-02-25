@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LogOut, Menu, Settings, X } from "lucide-react";
+import { BookOpen, LogOut, Menu, PenLine, Settings, X } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ interface MemberHeaderProps {
 
 const navLinks = [
   { href: "/dashboard", label: "Meine Lehrgänge", icon: BookOpen },
+  { href: "/reflexionen", label: "Meine Reflexionen", icon: PenLine },
   { href: "/settings", label: "Einstellungen", icon: Settings },
 ];
 
