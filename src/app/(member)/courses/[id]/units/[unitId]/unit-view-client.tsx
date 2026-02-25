@@ -194,7 +194,7 @@ export function UnitViewClient({
             </div>
 
             {/* Reflexion - right side on desktop, below on mobile */}
-            <div className="xl:w-[380px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start">
+            <div className="xl:w-[440px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start">
               <ReflexionForm
                 assignment={assignment}
                 existingSubmission={existingSubmission}

@@ -209,7 +209,7 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
           content={content}
           onChange={setContent}
           placeholder="Teile hier deine Gedanken, Erfahrungen und Erkenntnisse..."
-          minHeight="180px"
+          minHeight="300px"
           disabled={isSubmitting}
         />
 
