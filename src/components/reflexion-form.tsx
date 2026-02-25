@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,6 @@ import { createSubmission } from "@/lib/actions/submissions";
 import { toast } from "sonner";
 import {
   PenLine,
-  Upload,
-  X,
-  FileText,
   Send,
   Loader2,
   CheckCircle2,
@@ -34,10 +31,8 @@ interface ReflexionFormProps {
 
 export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormProps) {
   const [content, setContent] = useState("");
-  const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hasFeedback = existingSubmission?.feedback && existingSubmission.feedback.length > 0;
 
@@ -110,12 +105,6 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
                   className="mt-3 text-sm text-muted-foreground line-clamp-3"
                   dangerouslySetInnerHTML={{ __html: existingSubmission.content }}
                 />
-                {(existingSubmission as any).file_url && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Anhang hochgeladen</span>
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>
@@ -141,16 +130,6 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
     );
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) {
-      if (f.size > 10 * 1024 * 1024) {
-        toast.error("Datei zu gross. Maximal 10 MB.");
-        return;
-      }
-      setFile(f);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!content.trim()) {
@@ -160,29 +139,9 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
 
     setIsSubmitting(true);
     try {
-      let fileUrl: string | undefined;
-
-      // Upload file if present
-      if (file) {
-        const { createClient } = await import("@/lib/supabase/client");
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Nicht eingeloggt");
-
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("reflection-files")
-          .upload(path, file);
-
-        if (uploadError) throw uploadError;
-        fileUrl = path;
-      }
-
       const result = await createSubmission({
         assignmentId: assignment.id,
         content: content.trim(),
-        fileUrl,
       });
 
       if ("error" in result) {
@@ -218,43 +177,6 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
           minHeight="300px"
           disabled={isSubmitting}
         />
-
-        {/* File upload */}
-        <div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-          />
-          {file ? (
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              <FileText className="w-5 h-5 text-[#0099A8] shrink-0" />
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium truncate block">{file.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </span>
-              </div>
-              {!isSubmitting && (
-                <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full gap-2"
-              disabled={isSubmitting}
-            >
-              <Upload className="w-4 h-4" />
-              Datei hinzufügen (optional)
-            </Button>
-          )}
-        </div>
 
         <Button
           className="w-full gap-2 bg-[#0099A8] hover:bg-[#007A87] text-white"
