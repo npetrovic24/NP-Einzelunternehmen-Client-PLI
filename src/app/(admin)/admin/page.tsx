@@ -18,7 +18,7 @@ export default async function AdminDashboardPage() {
       .eq("id", user.id)
       .single();
     if (profile?.role === "dozent") {
-      redirect("/admin/members");
+      redirect("/admin/reflexionen");
     }
   }
 
