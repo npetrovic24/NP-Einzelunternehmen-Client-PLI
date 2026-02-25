@@ -110,6 +110,12 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
                   className="mt-3 text-sm text-muted-foreground line-clamp-3"
                   dangerouslySetInnerHTML={{ __html: existingSubmission.content }}
                 />
+                {(existingSubmission as any).file_url && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Anhang hochgeladen</span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
