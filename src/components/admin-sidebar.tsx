@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/lib/types";
 
 const allNavItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
+  { href: "/admin/reflexionen", label: "Reflexionen", icon: MessageCircle, adminOnly: false },
   { href: "/admin/members", label: "Benutzer", icon: Users, adminOnly: false },
   { href: "/admin/courses", label: "Lehrgänge", icon: BookOpen, adminOnly: true },
 ];

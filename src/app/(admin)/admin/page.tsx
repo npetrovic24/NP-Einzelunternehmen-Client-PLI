@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, BookOpen, BarChart3, Layers, Clock } from "lucide-react";
+import { Users, BookOpen, BarChart3, Layers, Clock, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getReflexionStats } from "@/lib/actions/submissions";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
@@ -19,6 +21,8 @@ export default async function AdminDashboardPage() {
       redirect("/admin/members");
     }
   }
+
+  const reflexionStats = await getReflexionStats();
 
   const [
     { count: membersCount },
@@ -111,6 +115,29 @@ export default async function AdminDashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Reflexionen quick access */}
+      {reflexionStats.pending > 0 && (
+        <div className="mt-6">
+          <Link href="/admin/reflexionen">
+            <Card className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow cursor-pointer">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100">
+                  <MessageCircle className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">
+                    {reflexionStats.pending} offene Reflexion{reflexionStats.pending !== 1 ? "en" : ""}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    warten auf Feedback
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
 
       {/* Recent members */}
       {recentMembers && recentMembers.length > 0 && (
