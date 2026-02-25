@@ -141,7 +141,7 @@ export function UnitViewClient({
 
   return (
     <div className="relative animate-fade-in">
-      <div className="p-6 lg:p-8 max-w-5xl pb-24">
+      <div className="p-6 lg:p-8 max-w-7xl pb-24">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Link
@@ -171,30 +171,54 @@ export function UnitViewClient({
           <div className="mt-2 h-1 w-12 rounded-full bg-primary/60" />
         </div>
 
-        {/* Content blocks */}
-        {blocks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
-            <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
-            <p className="text-muted-foreground text-sm">
-              Dieser Tag hat noch keine Inhalte.
-            </p>
+        {/* Content + Reflexion layout */}
+        {assignment ? (
+          /* Side-by-side on desktop: content left, reflexion right */
+          <div className="flex flex-col xl:flex-row gap-8">
+            {/* Content blocks - left side */}
+            <div className="flex-1 min-w-0">
+              {blocks.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
+                  <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-muted-foreground text-sm">
+                    Dieser Tag hat noch keine Inhalte.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-10">
+                  {blocks.map((block) => (
+                    <ContentBlockRenderer key={block.id} block={block} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Reflexion - right side on desktop, below on mobile */}
+            <div className="xl:w-[380px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start">
+              <ReflexionForm
+                assignment={assignment}
+                existingSubmission={existingSubmission}
+              />
+            </div>
           </div>
         ) : (
-          <div className="space-y-10">
-            {blocks.map((block) => (
-              <ContentBlockRenderer key={block.id} block={block} />
-            ))}
-          </div>
-        )}
-
-        {/* Reflexion section */}
-        {assignment && (
-          <div className="mt-12 pt-8 border-t border-border/50">
-            <ReflexionForm
-              assignment={assignment}
-              existingSubmission={existingSubmission}
-            />
-          </div>
+          /* No assignment — full width content */
+          <>
+            {blocks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
+                <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
+                <p className="text-muted-foreground text-sm">
+                  Dieser Tag hat noch keine Inhalte.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-10">
+                {blocks.map((block) => (
+                  <ContentBlockRenderer key={block.id} block={block} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
