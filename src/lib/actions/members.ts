@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sendWelcomeEmail, sendPasswordResetEmail } from "@/lib/email";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -96,6 +97,7 @@ export async function createMember(formData: {
   }
 
   // Assign courses if provided
+  let assignedCourses: { id: string; name: string }[] = [];
   if (formData.courseAssignments && formData.courseAssignments.length > 0 && data.user) {
     const supabase = await createClient();
     const grants = formData.courseAssignments.map((ca) => ({
@@ -107,6 +109,29 @@ export async function createMember(formData: {
       expires_at: ca.expiresAt || null,
     }));
     await supabase.from("access_grants").insert(grants);
+
+    // Get course names for email
+    const courseIds = formData.courseAssignments.map(ca => ca.courseId);
+    const { data: coursesData } = await supabase
+      .from("courses")
+      .select("id, name")
+      .in("id", courseIds);
+    
+    assignedCourses = coursesData || [];
+  }
+
+  // Send welcome email (fire & forget)
+  if (data.user) {
+    sendWelcomeEmail({
+      fullName: formData.fullName,
+      email: formData.email,
+      password: formData.password,
+      role,
+      courses: assignedCourses,
+    }).catch(error => {
+      console.error("Failed to send welcome email:", error);
+      // Don't throw - email failures shouldn't block user creation
+    });
   }
 
   revalidatePath("/admin/members");
@@ -196,15 +221,21 @@ export async function toggleMemberStatus(memberId: string, isActive: boolean) {
 export async function resetMemberPassword(memberId: string, newPassword: string) {
   const { role: callerRole } = await requireAdminOrDozent();
 
+  // Get user profile for email
+  const supabase = await createClient();
+  const { data: userProfile } = await supabase
+    .from("profiles")
+    .select("role, full_name, email")
+    .eq("id", memberId)
+    .single();
+
+  if (!userProfile) {
+    return { error: "Benutzer nicht gefunden." };
+  }
+
   // Dozent can only reset passwords for participants
   if (callerRole === "dozent") {
-    const supabase = await createClient();
-    const { data: target } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", memberId)
-      .single();
-    if (!target || target.role !== "participant") {
+    if (userProfile.role !== "participant") {
       return { error: "Keine Berechtigung, dieses Passwort zurückzusetzen." };
     }
   }
@@ -216,5 +247,16 @@ export async function resetMemberPassword(memberId: string, newPassword: string)
   });
 
   if (error) return { error: error.message };
+
+  // Send password reset email (fire & forget)
+  sendPasswordResetEmail({
+    fullName: userProfile.full_name,
+    email: userProfile.email,
+    newPassword,
+  }).catch(error => {
+    console.error("Failed to send password reset email:", error);
+    // Don't throw - email failures shouldn't block password reset
+  });
+
   return { success: true };
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AccessGrant, Course, Module, Unit, UserRole } from "@/lib/types";
+import { sendAccessExpiredEmail } from "@/lib/email";
 
 export interface UserAccessData {
   grants: AccessGrant[];
@@ -125,6 +126,62 @@ export function isCourseExpired(
   );
 
   return !hasAnyActiveUnit && hasAnyGrant;
+}
+
+/**
+ * Checks for expired access and sends notification email if needed
+ */
+export async function checkAndNotifyExpiredAccess(userId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    
+    // Get user profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email, role")
+      .eq("id", userId)
+      .single();
+
+    if (!profile || profile.role === "admin" || profile.role === "dozent") {
+      return; // Don't check for admins/dozents
+    }
+
+    // Get user's grants and courses
+    const [grantsRes, coursesRes] = await Promise.all([
+      supabase.from("access_grants").select("*").eq("user_id", userId),
+      supabase
+        .from("courses")
+        .select("id, name")
+        .eq("is_active", true),
+    ]);
+
+    const grants = grantsRes.data || [];
+    const courses = coursesRes.data || [];
+
+    // Find expired course grants
+    const expiredCourseNames: string[] = [];
+    
+    for (const grant of grants) {
+      if (isGrantExpired(grant) && !grant.module_id && !grant.unit_id) {
+        const course = courses.find(c => c.id === grant.course_id);
+        if (course) {
+          expiredCourseNames.push(course.name);
+        }
+      }
+    }
+
+    // Send notification if there are expired courses
+    if (expiredCourseNames.length > 0) {
+      await sendAccessExpiredEmail({
+        fullName: profile.full_name,
+        email: profile.email,
+        expiredCourses: expiredCourseNames,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to check/notify expired access:", error);
+    // Don't throw - this shouldn't block other functionality
+  }
 }
 
 /**

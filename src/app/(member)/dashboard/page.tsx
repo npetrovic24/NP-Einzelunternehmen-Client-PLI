@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAccessibleCoursesWithCounts } from "@/lib/access";
+import { getAccessibleCoursesWithCounts, checkAndNotifyExpiredAccess } from "@/lib/access";
 import { DashboardClient } from "./dashboard-client";
 
 export default async function DashboardPage() {
@@ -18,6 +18,12 @@ export default async function DashboardPage() {
     .single();
 
   const courses = await getAccessibleCoursesWithCounts(user.id);
+
+  // Check for expired access and send notification email if needed (fire & forget)
+  checkAndNotifyExpiredAccess(user.id).catch(error => {
+    console.error("Failed to check expired access:", error);
+    // Don't block dashboard loading
+  });
 
   return (
     <DashboardClient
