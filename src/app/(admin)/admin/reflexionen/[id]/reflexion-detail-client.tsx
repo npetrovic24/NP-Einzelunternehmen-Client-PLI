@@ -157,172 +157,178 @@ export function ReflexionDetailClient({ submission }: Props) {
         </div>
       </div>
 
-      <div className="max-w-3xl space-y-6">
-        {/* Meta info */}
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <span>{submission.assignment?.unit?.course?.name}</span>
-            {submission.assignment?.unit?.module?.name && (
-              <>
-                <span>·</span>
-                <span>{submission.assignment.unit.module.name}</span>
-              </>
-            )}
-            <span>·</span>
-            <span>{submission.assignment?.unit?.name}</span>
-          </div>
-          <h2 className="text-xl font-semibold">{submission.assignment?.title}</h2>
-          {submission.assignment?.description && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {submission.assignment.description}
-            </p>
-          )}
-        </div>
-
-        {/* Student info */}
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-              {submission.user?.full_name
-                ?.split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2) || "?"}
+      <div className="flex flex-col xl:flex-row gap-6">
+        {/* Left: Reflexion content */}
+        <div className="flex-1 min-w-0 space-y-6">
+          {/* Meta info */}
+          <div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <span>{submission.assignment?.unit?.course?.name}</span>
+              {submission.assignment?.unit?.module?.name && (
+                <>
+                  <span>·</span>
+                  <span>{submission.assignment.unit.module.name}</span>
+                </>
+              )}
+              <span>·</span>
+              <span>{submission.assignment?.unit?.name}</span>
             </div>
-            <div>
-              <p className="font-medium text-sm">{submission.user?.full_name}</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="w-3 h-3" />
-                {new Date(submission.submitted_at).toLocaleDateString("de-CH", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+            <h2 className="text-xl font-semibold">{submission.assignment?.title}</h2>
+            {submission.assignment?.description && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {submission.assignment.description}
               </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Submission content */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Eingereichte Reflexion</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className="prose prose-sm max-w-none text-foreground leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: submission.content }}
-            />
-            {submission.file_url && (
-              <div className="mt-4 pt-4 border-t">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="w-4 h-4" />
-                  Anhang herunterladen
-                </Button>
-              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Existing feedback */}
-        {hasFeedback && (
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-green-600" />
-                Bereits gesendetes Feedback
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {submission.feedback!.map((fb) => (
-                <div key={fb.id} className="mb-4 last:mb-0">
-                  <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      {fb.reviewer?.full_name || "Team PLI®"}
-                    </span>
-                    <span>·</span>
-                    <span>
-                      {new Date(fb.created_at).toLocaleDateString("de-CH", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {fb.is_ai_generated && (
-                      <Badge variant="outline" className="text-xs">KI-unterstützt</Badge>
-                    )}
-                  </div>
-                  <div className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
-                    {fb.content}
-                  </div>
-                </div>
-              ))}
+          {/* Student info */}
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                {submission.user?.full_name
+                  ?.split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2) || "?"}
+              </div>
+              <div>
+                <p className="font-medium text-sm">{submission.user?.full_name}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(submission.submitted_at).toLocaleDateString("de-CH", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Feedback form (only if not yet reviewed, or allow additional feedback) */}
-        {!hasFeedback && (
+          {/* Submission content */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Feedback schreiben</CardTitle>
+              <CardTitle className="text-base">Eingereichte Reflexion</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleGenerateAi}
-                  disabled={isGenerating || isSubmitting}
-                  className="gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      KI generiert...
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="w-4 h-4" />
-                      KI-Feedback generieren
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <Textarea
-                value={feedbackContent}
-                onChange={(e) => setFeedbackContent(e.target.value)}
-                placeholder="Feedback hier schreiben oder per KI generieren lassen..."
-                rows={12}
-                className="resize-y"
-                disabled={isSubmitting}
+            <CardContent>
+              <div
+                className="prose prose-sm max-w-none text-foreground leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: submission.content }}
               />
-
-              <div className="flex gap-2 justify-end">
-                <Button
-                  onClick={handleSubmitFeedback}
-                  disabled={isSubmitting || !feedbackContent.trim()}
-                  className="gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Wird gesendet...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Feedback absenden
-                    </>
-                  )}
-                </Button>
-              </div>
+              {submission.file_url && (
+                <div className="mt-4 pt-4 border-t">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Anhang herunterladen
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+        </div>
+
+        {/* Right: Feedback panel (sticky) */}
+        <div className="xl:w-[420px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto space-y-6">
+          {/* Existing feedback */}
+          {hasFeedback && (
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-green-600" />
+                  Bereits gesendetes Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {submission.feedback!.map((fb) => (
+                  <div key={fb.id} className="mb-4 last:mb-0">
+                    <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {fb.reviewer?.full_name || "Team PLI®"}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {new Date(fb.created_at).toLocaleDateString("de-CH", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                      {fb.is_ai_generated && (
+                        <Badge variant="outline" className="text-xs">KI-unterstützt</Badge>
+                      )}
+                    </div>
+                    <div className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
+                      {fb.content}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Feedback form */}
+          {!hasFeedback && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Feedback schreiben</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerateAi}
+                    disabled={isGenerating || isSubmitting}
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        KI generiert...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4" />
+                        KI-Feedback generieren
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <Textarea
+                  value={feedbackContent}
+                  onChange={(e) => setFeedbackContent(e.target.value)}
+                  placeholder="Feedback hier schreiben oder per KI generieren lassen..."
+                  rows={12}
+                  className="resize-y"
+                  disabled={isSubmitting}
+                />
+
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    onClick={handleSubmitFeedback}
+                    disabled={isSubmitting || !feedbackContent.trim()}
+                    className="gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Wird gesendet...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Feedback absenden
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
