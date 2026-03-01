@@ -271,3 +271,22 @@ export async function resetMemberPassword(memberId: string, newPassword: string)
 
   return { success: true };
 }
+
+export async function deleteMember(memberId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Delete access grants first
+  await supabase.from("access_grants").delete().eq("user_id", memberId);
+
+  // Delete profile
+  await supabase.from("profiles").delete().eq("id", memberId);
+
+  // Delete from Supabase Auth
+  const { error } = await admin.auth.admin.deleteUser(memberId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/members");
+  return { success: true };
+}

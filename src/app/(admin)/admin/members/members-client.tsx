@@ -8,6 +8,7 @@ import {
   updateMember,
   toggleMemberStatus,
   resetMemberPassword,
+  deleteMember,
 } from "@/lib/actions/members";
 import {
   Table,
@@ -55,6 +56,7 @@ import {
   Pencil,
   CalendarIcon,
   X,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -82,6 +84,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
   const [resetOpen, setResetOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [resetMember, setResetMember] = useState<Profile | null>(null);
+  const [deleteMemberTarget, setDeleteMemberTarget] = useState<Profile | null>(null);
   const [editMember, setEditMember] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -262,6 +265,19 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     setResetMember(member);
     setNewResetPassword("");
     setResetOpen(true);
+  }
+
+  async function handleDeleteMember() {
+    if (!deleteMemberTarget) return;
+    setLoading(true);
+    const result = await deleteMember(deleteMemberTarget.id);
+    setLoading(false);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`${deleteMemberTarget.full_name || deleteMemberTarget.email} wurde gelöscht.`);
+    setDeleteMemberTarget(null);
   }
 
   function openEditDialog(member: Profile) {
@@ -531,6 +547,17 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                       >
                         <KeyRound className="h-4 w-4" />
                       </Button>
+                      {!isDozent && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteMemberTarget(member)}
+                          title="Benutzer löschen"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                       {!isDozent && member.role === "participant" && (
                         <Button variant="outline" size="sm" asChild>
                           <Link
@@ -639,6 +666,26 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
             <Button onClick={handleEdit} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteMemberTarget} onOpenChange={(open) => !open && setDeleteMemberTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Benutzer löschen</DialogTitle>
+            <DialogDescription>
+              Möchten Sie <strong>{deleteMemberTarget?.full_name || deleteMemberTarget?.email}</strong> wirklich unwiderruflich löschen? Alle Zugänge und Daten werden entfernt.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteMemberTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteMember} disabled={loading}>
+              {loading ? "Wird gelöscht..." : "Endgültig löschen"}
             </Button>
           </DialogFooter>
         </DialogContent>
