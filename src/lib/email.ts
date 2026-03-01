@@ -10,7 +10,8 @@ const FROM_EMAIL = "PLI Lernportal <pli@elevize.ai>";
 export interface WelcomeEmailData {
   fullName: string;
   email: string;
-  password: string;
+  password?: string;
+  passwordSetLink?: string;
   role: "admin" | "dozent" | "participant";
   courses?: { id: string; name: string }[];
   loginUrl?: string;

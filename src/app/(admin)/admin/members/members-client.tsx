@@ -88,7 +88,6 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
   // Create form state
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<UserRole>("participant");
   const [courseAssignments, setCourseAssignments] = useState<CourseAssignment[]>([]);
 
@@ -140,12 +139,8 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
   }
 
   async function handleCreate() {
-    if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
+    if (!newName.trim() || !newEmail.trim()) {
       toast.error("Bitte alle Pflichtfelder ausfüllen.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      toast.error("Passwort muss mindestens 8 Zeichen haben.");
       return;
     }
 
@@ -153,7 +148,6 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     const effectiveRole = isDozent ? "participant" : newRole;
     const result = await createMember({
       email: newEmail,
-      password: newPassword,
       fullName: newName,
       role: effectiveRole,
       courseAssignments: effectiveRole === "participant" && courseAssignments.length > 0 ? courseAssignments : undefined,
@@ -166,7 +160,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     }
 
     const roleLabel = effectiveRole === "admin" ? "Admin" : effectiveRole === "dozent" ? "Dozent/in" : "Benutzer";
-    toast.success(`${roleLabel} "${newName}" wurde angelegt.`);
+    toast.success(`${roleLabel} "${newName}" wurde angelegt. Einladungs-E-Mail wurde versendet.`);
     if (result.data) {
       setMembers((prev) => [
         {
@@ -183,7 +177,6 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     setCreateOpen(false);
     setNewName("");
     setNewEmail("");
-    setNewPassword("");
     setNewRole("participant");
     setCourseAssignments([]);
   }
@@ -299,7 +292,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
             <DialogHeader>
               <DialogTitle>Neue/n Benutzer/in anlegen</DialogTitle>
               <DialogDescription>
-                Erstelle eine/n neue/n Benutzer/in mit E-Mail und Passwort.
+                Erstelle eine/n neue/n Benutzer/in. Eine Einladungs-E-Mail mit einem Link zum Passwort setzen wird automatisch versendet.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -337,15 +330,10 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                   onChange={(e) => setNewEmail(e.target.value)}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Passwort * (min. 8 Zeichen)</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
+              <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+                <p className="text-sm text-blue-800">
+                  📧 Nach dem Anlegen erhält der/die Benutzer/in eine E-Mail mit einem Link, um ein eigenes Passwort zu setzen.
+                </p>
               </div>
 
               {/* Course assignments (only for participants) */}

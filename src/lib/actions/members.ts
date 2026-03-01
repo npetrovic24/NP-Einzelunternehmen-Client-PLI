@@ -69,7 +69,6 @@ export async function getAllCourses() {
 
 export async function createMember(formData: {
   email: string;
-  password: string;
   fullName: string;
   role?: "admin" | "dozent" | "participant";
   courseAssignments?: { courseId: string; expiresAt?: string | null }[];
@@ -79,9 +78,12 @@ export async function createMember(formData: {
   // Dozent can only create participants
   const role = callerRole === "dozent" ? "participant" : (formData.role || "participant");
 
+  // Create user with temporary random password (user will set their own via invite link)
+  const tempPassword = crypto.randomUUID();
+
   const { data, error } = await admin.auth.admin.createUser({
     email: formData.email,
-    password: formData.password,
+    password: tempPassword,
     email_confirm: true,
     user_metadata: {
       full_name: formData.fullName,
@@ -120,17 +122,26 @@ export async function createMember(formData: {
     assignedCourses = coursesData || [];
   }
 
-  // Send welcome email (fire & forget)
+  // Generate password-set link and send welcome email
   if (data.user) {
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email: formData.email,
+      options: {
+        redirectTo: `https://pli-portal.vercel.app/auth/callback?next=/set-password`,
+      },
+    });
+
+    const passwordSetLink = linkError ? undefined : linkData?.properties?.action_link;
+
     sendWelcomeEmail({
       fullName: formData.fullName,
       email: formData.email,
-      password: formData.password,
+      passwordSetLink,
       role,
       courses: assignedCourses,
     }).catch(error => {
       console.error("Failed to send welcome email:", error);
-      // Don't throw - email failures shouldn't block user creation
     });
   }
 

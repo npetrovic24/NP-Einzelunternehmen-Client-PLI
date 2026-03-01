@@ -14,7 +14,8 @@ import * as React from "react";
 interface WelcomeEmailProps {
   fullName: string;
   email: string;
-  password: string;
+  password?: string;
+  passwordSetLink?: string;
   role: "admin" | "dozent" | "participant";
   courses: { id: string; name: string }[];
   loginUrl: string;
@@ -24,6 +25,7 @@ export const WelcomeEmail = ({
   fullName,
   email,
   password,
+  passwordSetLink,
   role,
   courses,
   loginUrl,
@@ -72,10 +74,26 @@ export const WelcomeEmail = ({
           
           <Section style={credentialsSection}>
             <Heading style={h2}>Ihre Zugangsdaten</Heading>
-            <Text style={credentials}>
-              <strong>E-Mail:</strong> {email}<br />
-              <strong>Passwort:</strong> {password}
-            </Text>
+            {passwordSetLink ? (
+              <>
+                <Text style={credentials}>
+                  <strong>E-Mail:</strong> {email}
+                </Text>
+                <Text style={text}>
+                  Bitte klicken Sie auf den folgenden Button, um Ihr persönliches Passwort festzulegen:
+                </Text>
+                <Section style={buttonSection}>
+                  <Link href={passwordSetLink} style={button}>
+                    Passwort setzen
+                  </Link>
+                </Section>
+              </>
+            ) : (
+              <Text style={credentials}>
+                <strong>E-Mail:</strong> {email}<br />
+                <strong>Passwort:</strong> {password}
+              </Text>
+            )}
           </Section>
           
           {courses.length > 0 && role === "participant" && (
@@ -91,11 +109,13 @@ export const WelcomeEmail = ({
             </Section>
           )}
           
-          <Section style={buttonSection}>
-            <Link href={loginUrl} style={button}>
-              Jetzt anmelden
-            </Link>
-          </Section>
+          {!passwordSetLink && (
+            <Section style={buttonSection}>
+              <Link href={loginUrl} style={button}>
+                Jetzt anmelden
+              </Link>
+            </Section>
+          )}
           
           <Text style={helpText}>
             {role === "participant" 
@@ -104,9 +124,11 @@ export const WelcomeEmail = ({
             }
           </Text>
           
-          <Text style={securityNote}>
-            <strong>Sicherheitshinweis:</strong> Bitte ändern Sie Ihr Passwort nach der ersten Anmeldung.
-          </Text>
+          {!passwordSetLink && (
+            <Text style={securityNote}>
+              <strong>Sicherheitshinweis:</strong> Bitte ändern Sie Ihr Passwort nach der ersten Anmeldung.
+            </Text>
+          )}
           
           <Text style={footer}>
             Mit freundlichen Grüßen<br />
