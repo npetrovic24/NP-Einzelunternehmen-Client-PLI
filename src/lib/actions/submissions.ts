@@ -148,9 +148,10 @@ export async function getMySubmissionForAssignment(assignmentId: string) {
 // ─── Submissions (Dozent/Admin) ───
 
 export async function getAllSubmissions(statusFilter?: SubmissionStatus) {
-  const { supabase } = await requireDozentOrAdmin();
+  await requireDozentOrAdmin();
+  const admin = createAdminClient();
 
-  let query = supabase
+  let query = admin
     .from("submissions")
     .select(`
       *,
