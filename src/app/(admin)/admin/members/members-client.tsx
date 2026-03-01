@@ -352,8 +352,8 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                 </p>
               </div>
 
-              {/* Course assignments (only for participants) */}
-              {newRole === "participant" && courses.length > 0 && (
+              {/* Course assignments (only for participants, admin only) */}
+              {!isDozent && newRole === "participant" && courses.length > 0 && (
                 <div className="grid gap-2">
                   <Label>Kurse zuweisen (optional)</Label>
                   <div className="space-y-2 rounded-md border p-3 max-h-60 overflow-y-auto">

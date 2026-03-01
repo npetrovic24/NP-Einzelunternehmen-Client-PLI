@@ -15,7 +15,7 @@ async function requireAdmin() {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "dozent")) throw new Error("Keine Berechtigung");
+  if (!profile || profile.role !== "admin") throw new Error("Keine Berechtigung");
   return user;
 }
 
