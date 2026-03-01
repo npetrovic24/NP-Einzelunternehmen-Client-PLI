@@ -175,8 +175,8 @@ export function UnitViewClient({
         {assignment ? (
           /* Side-by-side on desktop: content left, reflexion right */
           <div className="flex flex-col xl:flex-row gap-8">
-            {/* Content blocks - left side */}
-            <div className="flex-1 min-w-0">
+            {/* Content blocks - left side (sticky on desktop) */}
+            <div className="flex-1 min-w-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
               {blocks.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
                   <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
