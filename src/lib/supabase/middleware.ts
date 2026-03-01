@@ -35,6 +35,11 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Password set page - always public (token comes via URL hash)
+  if (pathname === "/set-password") {
+    return supabaseResponse;
+  }
+
   // Public routes that don't need auth
   if (pathname === "/login" || pathname === "/") {
     if (user) {

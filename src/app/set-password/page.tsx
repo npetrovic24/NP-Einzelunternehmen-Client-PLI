@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,22 @@ export default function SetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Pick up the recovery token from the URL hash fragment
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        setReady(true);
+      }
+    });
+    // Also check if already signed in (e.g. page reload)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setReady(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,8 +113,8 @@ export default function SetPasswordPage() {
                     <Input id="confirm-password" type="password" placeholder="••••••••" value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)} required autoComplete="new-password" />
                   </div>
-                  <Button type="submit" className="w-full" disabled={!password || !confirmPassword || loading}>
-                    {loading ? "Wird gespeichert..." : "Passwort speichern"}
+                  <Button type="submit" className="w-full" disabled={!ready || !password || !confirmPassword || loading}>
+                    {!ready ? "Wird geladen..." : loading ? "Wird gespeichert..." : "Passwort speichern"}
                   </Button>
                 </form>
               </CardContent>

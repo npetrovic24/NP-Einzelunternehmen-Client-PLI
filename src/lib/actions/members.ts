@@ -128,7 +128,7 @@ export async function createMember(formData: {
       type: "recovery",
       email: formData.email,
       options: {
-        redirectTo: `https://pli-portal.vercel.app/auth/callback?next=/set-password`,
+        redirectTo: `https://pli-portal.vercel.app/set-password`,
       },
     });
 
