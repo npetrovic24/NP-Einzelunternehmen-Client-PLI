@@ -157,45 +157,40 @@ export function ReflexionDetailClient({ submission }: Props) {
         </div>
       </div>
 
+      {/* Meta info above both columns */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+          <span>{submission.assignment?.unit?.course?.name}</span>
+          {submission.assignment?.unit?.module?.name && (
+            <>
+              <span>·</span>
+              <span>{submission.assignment.unit.module.name}</span>
+            </>
+          )}
+          <span>·</span>
+          <span>{submission.assignment?.unit?.name}</span>
+        </div>
+        <h2 className="text-xl font-semibold">{submission.assignment?.title}</h2>
+        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+          <User className="w-3.5 h-3.5" />
+          <span className="font-medium text-foreground">{submission.user?.full_name || "Unbekannt"}</span>
+          <span>·</span>
+          <Calendar className="w-3.5 h-3.5" />
+          <span>
+            {new Date(submission.submitted_at).toLocaleDateString("de-CH", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+      </div>
+
       <div className="flex flex-col xl:flex-row gap-6">
         {/* Left: Reflexion content */}
         <div className="flex-1 min-w-0 space-y-6">
-          {/* Meta info + Student */}
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <span>{submission.assignment?.unit?.course?.name}</span>
-              {submission.assignment?.unit?.module?.name && (
-                <>
-                  <span>·</span>
-                  <span>{submission.assignment.unit.module.name}</span>
-                </>
-              )}
-              <span>·</span>
-              <span>{submission.assignment?.unit?.name}</span>
-            </div>
-            <h2 className="text-xl font-semibold">{submission.assignment?.title}</h2>
-            {submission.assignment?.description && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {submission.assignment.description}
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-              <User className="w-3.5 h-3.5" />
-              <span className="font-medium text-foreground">{submission.user?.full_name || "Unbekannt"}</span>
-              <span>·</span>
-              <Calendar className="w-3.5 h-3.5" />
-              <span>
-                {new Date(submission.submitted_at).toLocaleDateString("de-CH", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
-          </div>
-
           {/* Submission content */}
           <Card>
             <CardHeader className="pb-3">
