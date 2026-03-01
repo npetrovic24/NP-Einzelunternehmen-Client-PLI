@@ -13,20 +13,42 @@ export default function SetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
 
   // Pick up the recovery token from the URL hash fragment
   useEffect(() => {
-    const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        setReady(true);
-      }
-    });
-    // Also check if already signed in (e.g. page reload)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
-    return () => subscription.unsubscribe();
+    const hash = window.location.hash;
+    if (!hash || !hash.includes("access_token")) {
+      // No token in URL - check existing session
+      const supabase = createClient();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setReady(true);
+        } else {
+          setError("Kein gültiger Link. Bitte fordern Sie eine neue Einladung an.");
+        }
+      });
+      return;
+    }
+
+    // Parse token from hash and set session manually
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      const supabase = createClient();
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error: err }) => {
+          if (err) {
+            setError("Link ist abgelaufen. Bitte fordern Sie eine neue Einladung an.");
+          } else {
+            setReady(true);
+          }
+        });
+    } else {
+      setError("Ungültiger Link.");
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,8 +135,9 @@ export default function SetPasswordPage() {
                     <Input id="confirm-password" type="password" placeholder="••••••••" value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)} required autoComplete="new-password" />
                   </div>
+                  {error && <p className="text-sm text-red-600 text-center">{error}</p>}
                   <Button type="submit" className="w-full" disabled={!ready || !password || !confirmPassword || loading}>
-                    {!ready ? "Wird geladen..." : loading ? "Wird gespeichert..." : "Passwort speichern"}
+                    {!ready && !error ? "Wird geladen..." : loading ? "Wird gespeichert..." : "Passwort speichern"}
                   </Button>
                 </form>
               </CardContent>
