@@ -60,19 +60,16 @@ export function ReflexionenClient({ submissions }: ReflexionenClientProps) {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#0099A8] to-[#007A87] px-6 py-10 lg:px-8 lg:py-12">
-        <div className="mx-auto max-w-5xl">
-          <h1 className="text-2xl font-semibold text-white lg:text-3xl flex items-center gap-3">
-            <PenLine className="h-7 w-7" />
-            Meine Reflexionen
-          </h1>
-          <p className="mt-2 text-white/80">
-            Übersicht deiner eingereichten Reflexionen und Feedback.
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">
+          Meine Reflexionen
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          Übersicht deiner eingereichten Reflexionen und Feedback.
+        </p>
       </div>
 
-      <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      <div>
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <Button
