@@ -45,6 +45,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<void> {
         fullName: data.fullName,
         email: data.email,
         password: data.password,
+        passwordSetLink: data.passwordSetLink,
         role: data.role,
         courses: data.courses || [],
         loginUrl,
