@@ -297,7 +297,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
             {totalCount} Benutzer total, {activeCount} aktiv
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        {!isDozent && <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
@@ -451,7 +451,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       {/* Search */}
