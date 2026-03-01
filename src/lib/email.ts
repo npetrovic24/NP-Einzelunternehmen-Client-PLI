@@ -36,20 +36,58 @@ export interface AccessExpiredEmailData {
 export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<void> {
   try {
     const loginUrl = data.loginUrl || "https://pli-portal.vercel.app/login";
-    
+
+    const roleGreeting = data.role === "admin"
+      ? "Ihr Admin-Zugang zum PLI Lernportal wurde erfolgreich eingerichtet."
+      : data.role === "dozent"
+      ? "Sie wurden als Dozent im PLI Lernportal freigeschaltet."
+      : "Herzlich willkommen im Lernportal der Praxis für Lösungs-Impulse!";
+
+    const coursesHtml = (data.courses && data.courses.length > 0 && data.role === "participant")
+      ? `<div style="margin:24px 0"><h3 style="color:#0f766e;font-size:18px;margin-bottom:8px">Ihre zugewiesenen Kurse</h3><ul style="margin:0;padding:0 0 0 20px">${data.courses.map(c => `<li style="color:#374151;font-size:16px;line-height:24px">${c.name}</li>`).join("")}</ul></div>`
+      : "";
+
+    let credentialsHtml: string;
+    if (data.passwordSetLink) {
+      credentialsHtml = `
+        <div style="background:#f0fdfa;border:1px solid #5eead4;border-radius:8px;padding:20px;margin:24px 0">
+          <h3 style="color:#0f766e;font-size:18px;margin:0 0 8px">Ihre Zugangsdaten</h3>
+          <p style="color:#1f2937;font-size:16px;margin:0"><strong>E-Mail:</strong> ${data.email}</p>
+          <p style="color:#374151;font-size:16px;margin:12px 0">Bitte klicken Sie auf den folgenden Button, um Ihr persönliches Passwort festzulegen:</p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="${data.passwordSetLink}" style="background:#0d9488;border-radius:8px;color:#fff;display:inline-block;font-size:16px;font-weight:bold;line-height:50px;text-decoration:none;padding:0 32px">Passwort setzen</a>
+          </div>
+        </div>`;
+    } else if (data.password) {
+      credentialsHtml = `
+        <div style="background:#f0fdfa;border:1px solid #5eead4;border-radius:8px;padding:20px;margin:24px 0">
+          <h3 style="color:#0f766e;font-size:18px;margin:0 0 8px">Ihre Zugangsdaten</h3>
+          <p style="color:#1f2937;font-size:16px;font-family:monospace;margin:0"><strong>E-Mail:</strong> ${data.email}<br/><strong>Passwort:</strong> ${data.password}</p>
+        </div>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${loginUrl}" style="background:#0d9488;border-radius:8px;color:#fff;display:inline-block;font-size:16px;font-weight:bold;line-height:50px;text-decoration:none;padding:0 32px">Jetzt anmelden</a>
+        </div>`;
+    } else {
+      credentialsHtml = `<p style="color:#374151;font-size:16px"><strong>E-Mail:</strong> ${data.email}</p>`;
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0">
+      <div style="max-width:600px;margin:0 auto;padding:20px 0 48px">
+        <h1 style="color:#0d9488;font-size:28px;font-weight:bold;text-align:center;margin:40px 0">PLI Lernportal</h1>
+        <p style="color:#1f2937;font-size:16px">Hallo ${data.fullName},</p>
+        <p style="color:#374151;font-size:16px">${roleGreeting}</p>
+        ${credentialsHtml}
+        ${coursesHtml}
+        <p style="color:#6b7280;font-size:14px;text-align:center;margin:24px 0">Sollten Sie Fragen haben, wenden Sie sich gerne an Marianne Flury.</p>
+        <p style="color:#6b7280;font-size:14px;text-align:center;margin:32px 0 0">Mit freundlichen Grüßen<br/>Ihr Team der Praxis für Lösungs-Impulse</p>
+      </div>
+    </body></html>`;
+
     await resend.emails.send({
       from: FROM_EMAIL,
       to: [data.email],
       subject: getWelcomeSubject(data.role),
-      react: WelcomeEmail({
-        fullName: data.fullName,
-        email: data.email,
-        password: data.password,
-        passwordSetLink: data.passwordSetLink,
-        role: data.role,
-        courses: data.courses || [],
-        loginUrl,
-      }),
+      html,
     });
 
     console.log(`✅ Welcome email sent to ${data.email} (${data.role})`);
