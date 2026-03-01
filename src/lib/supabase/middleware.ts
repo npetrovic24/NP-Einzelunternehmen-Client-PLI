@@ -99,8 +99,8 @@ export async function updateSession(request: NextRequest) {
     if (profile?.role === "admin") {
       // Admin can access everything
     } else if (profile?.role === "dozent") {
-      // Dozent can only access /admin/members
-      if (!pathname.startsWith("/admin/members")) {
+      // Dozent can access /admin/members and /admin/reflexionen
+      if (!pathname.startsWith("/admin/members") && !pathname.startsWith("/admin/reflexionen")) {
         const url = request.nextUrl.clone();
         url.pathname = "/admin/members";
         return NextResponse.redirect(url);
