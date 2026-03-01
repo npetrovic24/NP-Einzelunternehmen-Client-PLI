@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, MessageCircle, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
 
 const allNavItems = [
@@ -15,9 +16,10 @@ const allNavItems = [
 
 interface AdminSidebarProps {
   role: UserRole;
+  userName?: string;
 }
 
-export function AdminSidebar({ role }: AdminSidebarProps) {
+export function AdminSidebar({ role, userName }: AdminSidebarProps) {
   const pathname = usePathname();
   const navItems = role === "dozent"
     ? allNavItems.filter((item) => !item.adminOnly)
@@ -25,6 +27,12 @@ export function AdminSidebar({ role }: AdminSidebarProps) {
 
   const homeHref = role === "dozent" ? "/admin/members" : "/admin";
   const title = role === "dozent" ? "Verwaltung" : "Admin";
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-border bg-white lg:block">
@@ -59,6 +67,37 @@ export function AdminSidebar({ role }: AdminSidebarProps) {
             );
           })}
         </nav>
+
+        {/* User section */}
+        <div className="border-t border-border px-3 py-4 space-y-1">
+          {userName && (
+            <div className="flex items-center gap-3 px-3 py-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                {userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+              </div>
+              <span className="text-sm font-medium text-foreground truncate">{userName}</span>
+            </div>
+          )}
+          <Link
+            href="/settings"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname === "/settings"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Einstellungen
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            Abmelden
+          </button>
+        </div>
       </div>
     </aside>
   );

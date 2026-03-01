@@ -45,7 +45,7 @@ export function AppHeader({ userName, isAdmin = false, role = "participant", hea
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
-            <AdminSidebarMobile role={role} />
+            <AdminSidebarMobile role={role} userName={userName} />
           </SheetContent>
         </Sheet>
       )}

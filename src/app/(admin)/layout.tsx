@@ -33,7 +33,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex h-screen">
-      <AdminSidebar role={profile.role} />
+      <AdminSidebar role={profile.role} userName={profile.full_name || user.email || "User"} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AppHeader
           userName={profile.full_name || user.email || "Admin"}

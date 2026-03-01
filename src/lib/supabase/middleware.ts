@@ -94,8 +94,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Dozent should never be in member/participant area - redirect to admin
-  if (profile?.role === "dozent" && !pathname.startsWith("/admin")) {
+  // Dozent should never be in member/participant area (except /settings) - redirect to admin
+  if (profile?.role === "dozent" && !pathname.startsWith("/admin") && pathname !== "/settings") {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/members";
     return NextResponse.redirect(url);
