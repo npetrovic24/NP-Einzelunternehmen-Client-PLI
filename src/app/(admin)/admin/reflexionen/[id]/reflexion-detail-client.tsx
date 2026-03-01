@@ -219,7 +219,7 @@ export function ReflexionDetailClient({ submission }: Props) {
         </div>
 
         {/* Right: Feedback panel (sticky) */}
-        <div className="xl:w-[480px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto space-y-6">
+        <div className="xl:w-[520px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto space-y-6">
           {/* Existing feedback */}
           {hasFeedback && (
             <Card className="border-l-4 border-l-green-500">
@@ -289,8 +289,8 @@ export function ReflexionDetailClient({ submission }: Props) {
                   value={feedbackContent}
                   onChange={(e) => setFeedbackContent(e.target.value)}
                   placeholder="Feedback hier schreiben oder per KI generieren lassen..."
-                  rows={12}
-                  className="resize-y"
+                  rows={18}
+                  className="resize-y min-h-[300px]"
                   disabled={isSubmitting}
                 />
 
