@@ -16,17 +16,19 @@ export default function LoginPage() {
   // Handle Supabase recovery link (token in URL hash fragment)
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash && hash.includes("access_token")) {
-      const supabase = createClient();
-      // Supabase client auto-picks up the hash token
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          const params = new URLSearchParams(window.location.search);
-          const next = params.get("next") || "/set-password";
-          window.location.href = next;
-        }
-      });
-    }
+    if (!hash || !hash.includes("access_token")) return;
+
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        subscription.unsubscribe();
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get("next") || "/set-password";
+        window.location.href = next;
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
