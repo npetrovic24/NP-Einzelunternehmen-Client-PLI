@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,22 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Handle Supabase recovery link (token in URL hash fragment)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      const supabase = createClient();
+      // Supabase client auto-picks up the hash token
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const params = new URLSearchParams(window.location.search);
+          const next = params.get("next") || "/set-password";
+          window.location.href = next;
+        }
+      });
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
