@@ -160,7 +160,7 @@ export function ReflexionDetailClient({ submission }: Props) {
       <div className="flex flex-col xl:flex-row gap-6">
         {/* Left: Reflexion content */}
         <div className="flex-1 min-w-0 space-y-6">
-          {/* Meta info */}
+          {/* Meta info + Student */}
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <span>{submission.assignment?.unit?.course?.name}</span>
@@ -179,34 +179,22 @@ export function ReflexionDetailClient({ submission }: Props) {
                 {submission.assignment.description}
               </p>
             )}
+            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+              <User className="w-3.5 h-3.5" />
+              <span className="font-medium text-foreground">{submission.user?.full_name || "Unbekannt"}</span>
+              <span>·</span>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>
+                {new Date(submission.submitted_at).toLocaleDateString("de-CH", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
           </div>
-
-          {/* Student info */}
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                {submission.user?.full_name
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2) || "?"}
-              </div>
-              <div>
-                <p className="font-medium text-sm">{submission.user?.full_name}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(submission.submitted_at).toLocaleDateString("de-CH", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Submission content */}
           <Card>
@@ -231,7 +219,7 @@ export function ReflexionDetailClient({ submission }: Props) {
         </div>
 
         {/* Right: Feedback panel (sticky) */}
-        <div className="xl:w-[420px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto space-y-6">
+        <div className="xl:w-[480px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto space-y-6">
           {/* Existing feedback */}
           {hasFeedback && (
             <Card className="border-l-4 border-l-green-500">

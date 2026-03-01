@@ -181,9 +181,10 @@ export async function getAllSubmissions(statusFilter?: SubmissionStatus) {
 }
 
 export async function getSubmissionById(submissionId: string) {
-  const { supabase } = await requireDozentOrAdmin();
+  await requireDozentOrAdmin();
+  const admin = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("submissions")
     .select(`
       *,
