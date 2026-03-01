@@ -134,15 +134,17 @@ export async function createMember(formData: {
 
     const passwordSetLink = linkError ? undefined : linkData?.properties?.action_link;
 
-    sendWelcomeEmail({
-      fullName: formData.fullName,
-      email: formData.email,
-      passwordSetLink,
-      role,
-      courses: assignedCourses,
-    }).catch(error => {
+    try {
+      await sendWelcomeEmail({
+        fullName: formData.fullName,
+        email: formData.email,
+        passwordSetLink,
+        role,
+        courses: assignedCourses,
+      });
+    } catch (error) {
       console.error("Failed to send welcome email:", error);
-    });
+    }
   }
 
   revalidatePath("/admin/members");
