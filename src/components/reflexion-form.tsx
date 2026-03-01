@@ -15,6 +15,8 @@ import {
   Clock,
   Heart,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import type { Assignment, Feedback } from "@/lib/types";
 
@@ -35,6 +37,7 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
   const [showSuccess, setShowSuccess] = useState(false);
 
   const hasFeedback = existingSubmission?.feedback && existingSubmission.feedback.length > 0;
+  const [showFullReflexion, setShowFullReflexion] = useState(false);
 
   // Already submitted — show status
   if (existingSubmission && !showSuccess) {
@@ -66,7 +69,7 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
                     </span>
                   </div>
                   <div
-                    className="prose prose-sm max-w-none text-foreground leading-relaxed"
+                    className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-wrap"
                     dangerouslySetInnerHTML={{ __html: fb.content }}
                   />
                 </div>
@@ -102,9 +105,25 @@ export function ReflexionForm({ assignment, existingSubmission }: ReflexionFormP
                   })}
                 </p>
                 <div
-                  className="mt-3 text-sm text-muted-foreground line-clamp-3"
+                  className={`mt-3 text-sm text-muted-foreground ${showFullReflexion ? "" : "line-clamp-3"}`}
                   dangerouslySetInnerHTML={{ __html: existingSubmission.content }}
                 />
+                <button
+                  onClick={() => setShowFullReflexion(!showFullReflexion)}
+                  className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  {showFullReflexion ? (
+                    <>
+                      <ChevronUp className="h-3 w-3" />
+                      Weniger anzeigen
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3 w-3" />
+                      Vollständig anzeigen
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </CardContent>
