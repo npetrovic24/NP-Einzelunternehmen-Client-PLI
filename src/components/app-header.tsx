@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Shield } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AdminSidebarMobile } from "@/components/admin-sidebar-mobile";
 import type { UserRole } from "@/lib/types";
@@ -43,16 +42,7 @@ export function AppHeader({ userName, isAdmin = false, role = "participant", hea
         </Link>
       )}
 
-      {/* Admin badge + spacer */}
-      {isAdmin && (
-        <>
-          <Badge variant="outline" className="mr-auto gap-1 border-primary/30 text-primary text-xs">
-            <Shield className="h-3 w-3" />
-            {headerLabel || "Admin"}
-          </Badge>
-          <div className="flex-1" />
-        </>
-      )}
+      {isAdmin && <div className="flex-1" />}
 
       <div className="flex-1" />
     </header>
