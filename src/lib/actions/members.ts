@@ -101,7 +101,7 @@ export async function createMember(formData: {
   // Assign courses if provided
   let assignedCourses: { id: string; name: string }[] = [];
   if (formData.courseAssignments && formData.courseAssignments.length > 0 && data.user) {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const grants = formData.courseAssignments.map((ca) => ({
       user_id: data.user.id,
       course_id: ca.courseId,
