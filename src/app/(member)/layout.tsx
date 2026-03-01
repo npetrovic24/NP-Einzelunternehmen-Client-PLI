@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { MemberHeader } from "@/components/member-header";
+import { MemberSidebar } from "@/components/member-sidebar";
+import { MemberMobileHeader } from "@/components/member-mobile-header";
 
 export default async function MemberLayout({
   children,
@@ -25,26 +26,31 @@ export default async function MemberLayout({
 
   const isAdmin = profile?.role === "admin";
   const isDozent = profile?.role === "dozent";
+  const userName = profile?.full_name || user.email || "Benutzer";
 
   return (
-    <div className="flex h-screen flex-col">
-      {(isAdmin || isDozent) && (
-        <div className="flex items-center justify-center gap-2 bg-[#0099A8] px-4 py-1.5 text-xs text-white">
-          <span>{isAdmin ? "Admin-Vorschau" : "Dozenten-Ansicht"}</span>
-          {isAdmin && (
-            <>
-              <span className="mx-1">|</span>
-              <Link href="/admin" className="underline hover:no-underline">
-                Zurück zur Admin-Ansicht
-              </Link>
-            </>
-          )}
-        </div>
-      )}
-      <MemberHeader userName={profile?.full_name || user.email || "Benutzer"} />
-      <main className="flex-1 overflow-y-auto bg-secondary">
-        {children}
-      </main>
+    <div className="flex h-screen">
+      <MemberSidebar userName={userName} />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {(isAdmin || isDozent) && (
+          <div className="flex items-center justify-center gap-2 bg-[#0099A8] px-4 py-1.5 text-xs text-white">
+            <span>{isAdmin ? "Admin-Vorschau" : "Dozenten-Ansicht"}</span>
+            {isAdmin && (
+              <>
+                <span className="mx-1">|</span>
+                <Link href="/admin" className="underline hover:no-underline">
+                  Zurück zur Admin-Ansicht
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+        {/* Mobile header (hidden on desktop where sidebar shows) */}
+        <MemberMobileHeader userName={userName} />
+        <main className="flex-1 overflow-y-auto bg-secondary p-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

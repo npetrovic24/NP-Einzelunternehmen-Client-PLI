@@ -17,20 +17,18 @@ export function DashboardClient({ userName, courses }: DashboardClientProps) {
 
   return (
     <div className="animate-fade-in">
-      {/* Hero section */}
-      <div className="bg-gradient-to-r from-[#0099A8] to-[#007A87] px-6 py-10 lg:px-8 lg:py-12">
-        <div className="mx-auto max-w-5xl">
-          <h1 className="text-2xl font-semibold text-white lg:text-3xl">
-            Willkommen zurück{firstName ? `, ${firstName}` : ""}
-          </h1>
-          <p className="mt-2 text-white/80">
-            Deine freigeschalteten Lehrgänge im Überblick.
-          </p>
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">
+          Willkommen zurück{firstName ? `, ${firstName}` : ""}
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          Deine freigeschalteten Lehrgänge im Überblick.
+        </p>
       </div>
 
       {/* Course grid */}
-      <div className="mx-auto max-w-5xl px-6 py-8 lg:px-8">
+      <div>
         {courses.length === 0 ? (
           <Card className="mx-auto max-w-md border-dashed animate-fade-in-up">
             <CardContent className="flex flex-col items-center py-12 text-center">
