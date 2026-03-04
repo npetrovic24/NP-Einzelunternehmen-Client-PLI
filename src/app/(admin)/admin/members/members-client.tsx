@@ -60,13 +60,22 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface UnitOption {
+  id: string;
+  name: string;
+  sort_order: number;
+  module?: { id: string; name: string } | null;
+}
+
 interface CourseOption {
   id: string;
   name: string;
+  units?: UnitOption[];
 }
 
 interface CourseAssignment {
   courseId: string;
+  unitIds?: string[];
   expiresAt: string | null;
 }
 
@@ -360,12 +369,14 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
               {!isDozent && newRole === "participant" && courses.length > 0 && (
                 <div className="grid gap-2">
                   <Label>Kurse zuweisen (optional)</Label>
-                  <div className="space-y-2 rounded-md border p-3 max-h-60 overflow-y-auto">
+                  <div className="space-y-2 rounded-md border p-3 max-h-80 overflow-y-auto">
                     {courses.map((course) => {
                       const assignment = courseAssignments.find(
                         (ca) => ca.courseId === course.id
                       );
                       const isSelected = !!assignment;
+                      const hasUnitSelection = assignment?.unitIds && assignment.unitIds.length > 0;
+                      const courseUnits = course.units || [];
                       return (
                         <div key={course.id} className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -384,54 +395,119 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                             </label>
                           </div>
                           {isSelected && (
-                            <div className="ml-6 flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                Gültig bis:
-                              </span>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs"
+                            <div className="ml-6 space-y-2">
+                              {/* Expiration */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Gültig bis:
+                                </span>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                    >
+                                      <CalendarIcon className="mr-1 h-3 w-3" />
+                                      {assignment?.expiresAt
+                                        ? new Date(
+                                            assignment.expiresAt
+                                          ).toLocaleDateString("de-CH")
+                                        : "Kein Ablauf"}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-auto p-0"
+                                    align="start"
                                   >
-                                    <CalendarIcon className="mr-1 h-3 w-3" />
-                                    {assignment?.expiresAt
-                                      ? new Date(
-                                          assignment.expiresAt
-                                        ).toLocaleDateString("de-CH")
-                                      : "Kein Ablauf"}
+                                    <Calendar
+                                      mode="single"
+                                      selected={
+                                        assignment?.expiresAt
+                                          ? new Date(assignment.expiresAt)
+                                          : undefined
+                                      }
+                                      onSelect={(date) =>
+                                        setCourseExpiration(course.id, date)
+                                      }
+                                      disabled={(date) => date < new Date()}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                {assignment?.expiresAt && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() =>
+                                      setCourseExpiration(course.id, undefined)
+                                    }
+                                  >
+                                    <X className="h-3 w-3" />
                                   </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  className="w-auto p-0"
-                                  align="start"
-                                >
-                                  <Calendar
-                                    mode="single"
-                                    selected={
-                                      assignment?.expiresAt
-                                        ? new Date(assignment.expiresAt)
-                                        : undefined
-                                    }
-                                    onSelect={(date) =>
-                                      setCourseExpiration(course.id, date)
-                                    }
-                                    disabled={(date) => date < new Date()}
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                              {assignment?.expiresAt && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() =>
-                                    setCourseExpiration(course.id, undefined)
-                                  }
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
+                                )}
+                              </div>
+                              {/* Unit selection toggle */}
+                              {courseUnits.length > 0 && (
+                                <div className="space-y-1.5">
+                                  <button
+                                    type="button"
+                                    className="text-xs text-primary hover:underline"
+                                    onClick={() => {
+                                      setCourseAssignments((prev) =>
+                                        prev.map((ca) =>
+                                          ca.courseId === course.id
+                                            ? { ...ca, unitIds: ca.unitIds?.length ? undefined : [] }
+                                            : ca
+                                        )
+                                      );
+                                    }}
+                                  >
+                                    {hasUnitSelection
+                                      ? "✕ Ganzen Kurs freischalten"
+                                      : "Nur bestimmte Einheiten…"}
+                                  </button>
+                                  {assignment?.unitIds !== undefined && (
+                                    <div className="space-y-1 pl-2 border-l-2 border-border">
+                                      {courseUnits.map((unit) => {
+                                        const unitSelected = assignment.unitIds?.includes(unit.id) || false;
+                                        return (
+                                          <div key={unit.id} className="flex items-center gap-2">
+                                            <Checkbox
+                                              id={`unit-${unit.id}`}
+                                              checked={unitSelected}
+                                              onCheckedChange={() => {
+                                                setCourseAssignments((prev) =>
+                                                  prev.map((ca) => {
+                                                    if (ca.courseId !== course.id) return ca;
+                                                    const ids = ca.unitIds || [];
+                                                    return {
+                                                      ...ca,
+                                                      unitIds: unitSelected
+                                                        ? ids.filter((id) => id !== unit.id)
+                                                        : [...ids, unit.id],
+                                                    };
+                                                  })
+                                                );
+                                              }}
+                                            />
+                                            <label
+                                              htmlFor={`unit-${unit.id}`}
+                                              className="text-xs cursor-pointer"
+                                            >
+                                              {unit.name}
+                                              {unit.module && (
+                                                <span className="text-muted-foreground ml-1">
+                                                  ({unit.module.name})
+                                                </span>
+                                              )}
+                                            </label>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}

@@ -55,23 +55,31 @@ export async function getMembers() {
 
 export async function getAllCourses() {
   await requireAdminOrDozent();
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("courses")
-    .select("id, name")
+    .select(`
+      id, name,
+      units(id, name, sort_order, module:modules(id, name))
+    `)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return data;
+
+  // Sort units by sort_order
+  return (data || []).map((course: any) => ({
+    ...course,
+    units: (course.units || []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+  }));
 }
 
 export async function createMember(formData: {
   email: string;
   fullName: string;
   role?: "admin" | "dozent" | "participant";
-  courseAssignments?: { courseId: string; expiresAt?: string | null }[];
+  courseAssignments?: { courseId: string; unitIds?: string[]; expiresAt?: string | null }[];
 }) {
   const { role: callerRole } = await requireAdminOrDozent();
   const admin = createAdminClient();
@@ -102,14 +110,32 @@ export async function createMember(formData: {
   let assignedCourses: { id: string; name: string }[] = [];
   if (formData.courseAssignments && formData.courseAssignments.length > 0 && data.user) {
     const supabase = createAdminClient();
-    const grants = formData.courseAssignments.map((ca) => ({
-      user_id: data.user.id,
-      course_id: ca.courseId,
-      module_id: null,
-      unit_id: null,
-      is_granted: true,
-      expires_at: ca.expiresAt || null,
-    }));
+    const grants: any[] = [];
+    for (const ca of formData.courseAssignments) {
+      if (ca.unitIds && ca.unitIds.length > 0) {
+        // Unit-level access: one grant per unit
+        for (const unitId of ca.unitIds) {
+          grants.push({
+            user_id: data.user.id,
+            course_id: ca.courseId,
+            module_id: null,
+            unit_id: unitId,
+            is_granted: true,
+            expires_at: ca.expiresAt || null,
+          });
+        }
+      } else {
+        // Full course access
+        grants.push({
+          user_id: data.user.id,
+          course_id: ca.courseId,
+          module_id: null,
+          unit_id: null,
+          is_granted: true,
+          expires_at: ca.expiresAt || null,
+        });
+      }
+    }
     await supabase.from("access_grants").insert(grants);
 
     // Get course names for email
