@@ -138,10 +138,11 @@ export function ChatClient({ courses, currentUserId, currentUserName, currentUse
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4">
       {/* Course list (left) */}
-      <div className="w-56 shrink-0 space-y-1">
+      <div className="w-56 shrink-0 flex flex-col">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-2">
           Lehrgänge
         </p>
+        <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
         {courses.map((course) => (
           <button
             key={course.id}
@@ -157,6 +158,7 @@ export function ChatClient({ courses, currentUserId, currentUserName, currentUse
             <span className="truncate">{course.name}</span>
           </button>
         ))}
+        </div>
       </div>
 
       {/* Chat area (right) */}
