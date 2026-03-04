@@ -320,8 +320,24 @@ export async function deleteMember(memberId: string) {
 }
 
 export async function getParticipants() {
-  await requireAdminOrDozent();
+  const { user, role } = await requireAdminOrDozent();
   const admin = createAdminClient();
+  
+  // Dozent: only show assigned participants
+  if (role === "dozent") {
+    const assignedIds = await getMyAssignedParticipantIds(user.id);
+    if (assignedIds.length === 0) return [];
+    const { data, error } = await admin
+      .from("profiles")
+      .select("*")
+      .eq("role", "participant")
+      .in("id", assignedIds)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  
+  // Admin: show all
   const { data, error } = await admin
     .from("profiles")
     .select("*")
@@ -341,4 +357,68 @@ export async function getTeamMembers() {
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data;
+}
+
+// ─── Dozent Assignments ───
+
+export async function getDozents() {
+  await requireAdminOrDozent();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("role", ["dozent"])
+    .eq("is_active", true)
+    .order("full_name");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function getParticipantDozentAssignments(courseId?: string) {
+  await requireAdminOrDozent();
+  const admin = createAdminClient();
+  let query = admin.from("dozent_assignments").select("id, dozent_id, participant_id, course_id");
+  if (courseId) query = query.eq("course_id", courseId);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function assignDozent(participantId: string, dozentId: string, courseId?: string) {
+  const { role } = await requireAdminOrDozent();
+  if (role !== "admin") throw new Error("Nur Admins können Dozenten zuweisen.");
+  const admin = createAdminClient();
+  
+  // Remove existing assignment for this participant+course first
+  let deleteQuery = admin.from("dozent_assignments")
+    .delete()
+    .eq("participant_id", participantId);
+  if (courseId) {
+    deleteQuery = deleteQuery.eq("course_id", courseId);
+  } else {
+    deleteQuery = deleteQuery.is("course_id", null);
+  }
+  await deleteQuery;
+
+  // Insert new if dozentId is not empty
+  if (dozentId) {
+    const { error } = await admin.from("dozent_assignments").insert({
+      dozent_id: dozentId,
+      participant_id: participantId,
+      course_id: courseId || null,
+    });
+    if (error) throw new Error(error.message);
+  }
+  
+  return { success: true };
+}
+
+export async function getMyAssignedParticipantIds(userId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("dozent_assignments")
+    .select("participant_id")
+    .eq("dozent_id", userId);
+  if (error) return [];
+  return [...new Set((data || []).map(d => d.participant_id))];
 }

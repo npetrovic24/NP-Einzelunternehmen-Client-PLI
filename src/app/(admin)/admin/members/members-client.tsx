@@ -9,6 +9,7 @@ import {
   toggleMemberStatus,
   resetMemberPassword,
   deleteMember,
+  assignDozent,
 } from "@/lib/actions/members";
 import {
   Table,
@@ -79,16 +80,39 @@ interface CourseAssignment {
   expiresAt: string | null;
 }
 
+interface DozentOption {
+  id: string;
+  full_name: string | null;
+  email: string;
+}
+
+interface DozentAssignment {
+  id: string;
+  dozent_id: string;
+  participant_id: string;
+  course_id: string | null;
+}
+
 interface MembersClientProps {
   initialMembers: Profile[];
   courses: CourseOption[];
   currentUserRole?: UserRole;
   mode?: "participants" | "team";
+  dozents?: DozentOption[];
+  dozentAssignments?: DozentAssignment[];
 }
 
-export function MembersClient({ initialMembers, courses, currentUserRole = "admin", mode = "participants" }: MembersClientProps) {
+export function MembersClient({ initialMembers, courses, currentUserRole = "admin", mode = "participants", dozents = [], dozentAssignments: initialAssignments = [] }: MembersClientProps) {
   const isDozent = currentUserRole === "dozent";
   const isTeamMode = mode === "team";
+  const [dozentAssignmentMap, setDozentAssignmentMap] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const a of initialAssignments) {
+      // Use participant_id as key (global assignment, not per-course for now)
+      if (!a.course_id) map[a.participant_id] = a.dozent_id;
+    }
+    return map;
+  });
   const [members, setMembers] = useState(initialMembers);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -289,6 +313,21 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     }
     toast.success(`${deleteMemberTarget.full_name || deleteMemberTarget.email} wurde gelöscht.`);
     setDeleteMemberTarget(null);
+  }
+
+  async function handleDozentAssign(participantId: string, dozentId: string) {
+    try {
+      await assignDozent(participantId, dozentId);
+      setDozentAssignmentMap(prev => {
+        const next = { ...prev };
+        if (dozentId) next[participantId] = dozentId;
+        else delete next[participantId];
+        return next;
+      });
+      toast.success("Dozent zugewiesen");
+    } catch (err: any) {
+      toast.error(err.message || "Fehler beim Zuweisen");
+    }
   }
 
   function openEditDialog(member: Profile) {
@@ -555,6 +594,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
               <TableHead>Name</TableHead>
               <TableHead>E-Mail</TableHead>
               {isTeamMode && <TableHead>Rolle</TableHead>}
+              {!isTeamMode && !isDozent && dozents.length > 0 && <TableHead>Dozent/in</TableHead>}
               <TableHead>Status</TableHead>
               <TableHead>Erstellt am</TableHead>
               <TableHead className="text-right">Aktionen</TableHead>
@@ -590,6 +630,26 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                           Dozent/in
                         </Badge>
                       )}
+                    </TableCell>
+                  )}
+                  {!isTeamMode && !isDozent && dozents.length > 0 && (
+                    <TableCell>
+                      <Select
+                        value={dozentAssignmentMap[member.id] || "__none__"}
+                        onValueChange={(v) => handleDozentAssign(member.id, v === "__none__" ? "" : v)}
+                      >
+                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                          <SelectValue placeholder="Nicht zugewiesen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
+                          {dozents.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.full_name || d.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                   )}
                   <TableCell>

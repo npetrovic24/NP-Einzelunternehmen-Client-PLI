@@ -143,19 +143,26 @@ async function notifyTeamAboutNewReflexion(userId: string, assignmentId: string,
   const courseName = (assignment as any)?.unit?.course?.name || "Unbekannter Kurs";
   const assignmentTitle = assignment?.title || "Reflexion";
 
-  // Get all admins + dozents
-  const { data: team } = await admin
+  // Get admins (always notified) + assigned dozent(s) for this participant
+  const { data: admins } = await admin
     .from("profiles")
-    .select("email, full_name, role")
-    .in("role", ["admin", "dozent"])
+    .select("email")
+    .eq("role", "admin")
     .eq("is_active", true);
 
-  if (!team || team.length === 0) {
-    console.log("⚠️ No active team members found for notification");
+  const { data: assignments } = await admin
+    .from("dozent_assignments")
+    .select("dozent_id, dozent:profiles!dozent_assignments_dozent_id_fkey(email)")
+    .eq("participant_id", userId);
+
+  const adminEmails = (admins || []).map(a => a.email);
+  const dozentEmails = (assignments || []).map((a: any) => a.dozent?.email).filter(Boolean);
+  const emails = [...new Set([...adminEmails, ...dozentEmails])];
+
+  if (emails.length === 0) {
+    console.log("⚠️ No recipients found for notification");
     return;
   }
-
-  const emails = team.map(m => m.email);
   console.log(`📧 Notifying ${emails.length} team members: ${emails.join(", ")}`);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portal.loesungs-impulse.ch";
 
@@ -217,7 +224,7 @@ export async function getMySubmissionForAssignment(assignmentId: string) {
 // ─── Submissions (Dozent/Admin) ───
 
 export async function getAllSubmissions(statusFilter?: SubmissionStatus) {
-  await requireDozentOrAdmin();
+  const { user, role } = await requireDozentOrAdmin();
   const admin = createAdminClient();
 
   let query = admin
@@ -247,6 +254,14 @@ export async function getAllSubmissions(statusFilter?: SubmissionStatus) {
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
+  
+  // Dozent: filter to only assigned participants
+  if (role === "dozent") {
+    const { getMyAssignedParticipantIds } = await import("./members");
+    const assignedIds = await getMyAssignedParticipantIds(user.id);
+    return (data || []).filter((s: any) => assignedIds.includes(s.user_id));
+  }
+  
   return data || [];
 }
 

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getParticipants, getAllCourses } from "@/lib/actions/members";
+import { getParticipants, getAllCourses, getDozents, getParticipantDozentAssignments } from "@/lib/actions/members";
 import { MembersClient } from "./members-client";
 import type { UserRole } from "@/lib/types";
 
@@ -17,9 +17,11 @@ export default async function MembersPage() {
     if (profile) currentUserRole = profile.role as UserRole;
   }
 
-  const [members, courses] = await Promise.all([
+  const [members, courses, dozents, dozentAssignments] = await Promise.all([
     getParticipants(),
     getAllCourses(),
+    currentUserRole === "admin" ? getDozents() : Promise.resolve([]),
+    currentUserRole === "admin" ? getParticipantDozentAssignments() : Promise.resolve([]),
   ]);
 
   return (
@@ -28,6 +30,8 @@ export default async function MembersPage() {
       courses={courses}
       currentUserRole={currentUserRole}
       mode="participants"
+      dozents={dozents}
+      dozentAssignments={dozentAssignments}
     />
   );
 }
