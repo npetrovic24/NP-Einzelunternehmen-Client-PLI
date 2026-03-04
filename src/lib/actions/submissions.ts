@@ -89,15 +89,68 @@ export async function createSubmission(params: {
   fileUrl?: string;
 }) {
   const { supabase, user } = await requireAuth();
-  const { error } = await supabase.from("submissions").insert({
+  const { data: submission, error } = await supabase.from("submissions").insert({
     user_id: user.id,
     assignment_id: params.assignmentId,
     content: params.content,
     file_url: params.fileUrl || null,
-  });
+  }).select("id").single();
   if (error) return { error: error.message };
+
+  // Send notification to admins + dozents (fire & forget)
+  notifyTeamAboutNewReflexion(user.id, params.assignmentId, submission.id).catch((err) => {
+    console.error("Failed to send reflexion notifications:", err);
+  });
+
   revalidatePath("/reflexionen");
   return { success: true };
+}
+
+async function notifyTeamAboutNewReflexion(userId: string, assignmentId: string, submissionId: string) {
+  const { sendNewReflexionNotification } = await import("@/lib/email");
+  const admin = createAdminClient();
+
+  // Get student name
+  const { data: student } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .single();
+
+  // Get assignment + course info
+  const { data: assignment } = await admin
+    .from("assignments")
+    .select("title, unit:units(name, course:courses(name))")
+    .eq("id", assignmentId)
+    .single();
+
+  const courseName = (assignment as any)?.unit?.course?.name || "Unbekannter Kurs";
+  const assignmentTitle = assignment?.title || "Reflexion";
+
+  // Get all admins + dozents
+  const { data: team } = await admin
+    .from("profiles")
+    .select("email, full_name, role")
+    .in("role", ["admin", "dozent"])
+    .eq("is_active", true);
+
+  if (!team || team.length === 0) return;
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portal.loesungs-impulse.ch";
+
+  // Send to all team members in parallel
+  await Promise.allSettled(
+    team.map((member) =>
+      sendNewReflexionNotification({
+        recipientEmail: member.email,
+        recipientName: member.full_name?.split(" ")[0] || "Team",
+        studentName: student?.full_name || "Ein Teilnehmer",
+        assignmentTitle,
+        courseName,
+        submissionUrl: `${baseUrl}/admin/reflexionen/${submissionId}`,
+      })
+    )
+  );
 }
 
 export async function getMySubmissions() {
