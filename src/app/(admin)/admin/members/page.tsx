@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getMembers, getAllCourses } from "@/lib/actions/members";
+import { getParticipants, getAllCourses } from "@/lib/actions/members";
 import { MembersClient } from "./members-client";
 import type { UserRole } from "@/lib/types";
 
@@ -18,7 +18,7 @@ export default async function MembersPage() {
   }
 
   const [members, courses] = await Promise.all([
-    getMembers(),
+    getParticipants(),
     getAllCourses(),
   ]);
 
@@ -27,6 +27,7 @@ export default async function MembersPage() {
       initialMembers={members}
       courses={courses}
       currentUserRole={currentUserRole}
+      mode="participants"
     />
   );
 }

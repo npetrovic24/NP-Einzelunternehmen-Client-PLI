@@ -74,10 +74,12 @@ interface MembersClientProps {
   initialMembers: Profile[];
   courses: CourseOption[];
   currentUserRole?: UserRole;
+  mode?: "participants" | "team";
 }
 
-export function MembersClient({ initialMembers, courses, currentUserRole = "admin" }: MembersClientProps) {
+export function MembersClient({ initialMembers, courses, currentUserRole = "admin", mode = "participants" }: MembersClientProps) {
   const isDozent = currentUserRole === "dozent";
+  const isTeamMode = mode === "team";
   const [members, setMembers] = useState(initialMembers);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -91,7 +93,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
   // Create form state
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [newRole, setNewRole] = useState<UserRole>("participant");
+  const [newRole, setNewRole] = useState<UserRole>(isTeamMode ? "dozent" : "participant");
   const [courseAssignments, setCourseAssignments] = useState<CourseAssignment[]>([]);
 
   // Edit form state
@@ -180,7 +182,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     setCreateOpen(false);
     setNewName("");
     setNewEmail("");
-    setNewRole("participant");
+    setNewRole(isTeamMode ? "dozent" : "participant");
     setCourseAssignments([]);
   }
 
@@ -292,27 +294,30 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Benutzer</h1>
+          <h1 className="text-2xl font-semibold">{isTeamMode ? "Team" : "Teilnehmer"}</h1>
           <p className="text-sm text-muted-foreground">
-            {totalCount} Benutzer total, {activeCount} aktiv
+            {totalCount} {isTeamMode ? "Teammitglieder" : "Teilnehmer"} total, {activeCount} aktiv
           </p>
         </div>
         {!isDozent && <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
-              Neue/r Benutzer/in
+              {isTeamMode ? "Neues Teammitglied" : "Neue/r Teilnehmer/in"}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Neue/n Benutzer/in anlegen</DialogTitle>
+              <DialogTitle>{isTeamMode ? "Neues Teammitglied anlegen" : "Neue/n Teilnehmer/in anlegen"}</DialogTitle>
               <DialogDescription>
-                Erstelle eine/n neue/n Benutzer/in. Eine Einladungs-E-Mail mit einem Link zum Passwort setzen wird automatisch versendet.
+                {isTeamMode
+                  ? "Erstelle ein neues Teammitglied. Eine Einladungs-E-Mail wird automatisch versendet."
+                  : "Erstelle eine/n neue/n Teilnehmer/in. Eine Einladungs-E-Mail mit einem Link zum Passwort setzen wird automatisch versendet."
+                }
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {!isDozent && (
+              {!isDozent && isTeamMode && (
                 <div className="grid gap-2">
                   <Label htmlFor="role">Rolle</Label>
                   <Select value={newRole} onValueChange={(v) => setNewRole(v as UserRole)}>
@@ -320,7 +325,6 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="participant">Teilnehmer</SelectItem>
                       <SelectItem value="dozent">Dozent/in</SelectItem>
                       <SelectItem value="admin">Administrator</SelectItem>
                     </SelectContent>
@@ -474,7 +478,7 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>E-Mail</TableHead>
-              <TableHead>Rolle</TableHead>
+              {isTeamMode && <TableHead>Rolle</TableHead>}
               <TableHead>Status</TableHead>
               <TableHead>Erstellt am</TableHead>
               <TableHead className="text-right">Aktionen</TableHead>
@@ -484,7 +488,9 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
             {filteredMembers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  {search ? "Keine Benutzer gefunden." : "Noch keine Benutzer vorhanden."}
+                  {search
+                    ? `Keine ${isTeamMode ? "Teammitglieder" : "Teilnehmer"} gefunden.`
+                    : `Noch keine ${isTeamMode ? "Teammitglieder" : "Teilnehmer"} vorhanden.`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -497,19 +503,19 @@ export function MembersClient({ initialMembers, courses, currentUserRole = "admi
                     {member.full_name || "–"}
                   </TableCell>
                   <TableCell>{member.email}</TableCell>
-                  <TableCell>
-                    {member.role === "admin" ? (
-                      <Badge variant="default">
-                        <Shield className="mr-1 h-3 w-3" />Admin
-                      </Badge>
-                    ) : member.role === "dozent" ? (
-                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                        Dozent/in
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Teilnehmer</Badge>
-                    )}
-                  </TableCell>
+                  {isTeamMode && (
+                    <TableCell>
+                      {member.role === "admin" ? (
+                        <Badge variant="default">
+                          <Shield className="mr-1 h-3 w-3" />Admin
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                          Dozent/in
+                        </Badge>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Switch

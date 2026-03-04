@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, MessageCircle, MessageSquare, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, UserCog, BookOpen, MessageCircle, MessageSquare, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
@@ -10,7 +10,8 @@ import type { UserRole } from "@/lib/types";
 const allNavItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/admin/reflexionen", label: "Reflexionen", icon: MessageCircle, adminOnly: false },
-  { href: "/admin/members", label: "Benutzer", icon: Users, adminOnly: false },
+  { href: "/admin/members", label: "Teilnehmer", icon: Users, adminOnly: false },
+  { href: "/admin/team", label: "Team", icon: UserCog, adminOnly: true },
   { href: "/admin/courses", label: "Lehrgänge", icon: BookOpen, adminOnly: true },
   { href: "/admin/chat", label: "Chat", icon: MessageSquare, adminOnly: false },
 ];

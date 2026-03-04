@@ -292,3 +292,27 @@ export async function deleteMember(memberId: string) {
   revalidatePath("/admin/members");
   return { success: true };
 }
+
+export async function getParticipants() {
+  await requireAdminOrDozent();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("role", "participant")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function getTeamMembers() {
+  await requireAdminOrDozent();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("*")
+    .in("role", ["admin", "dozent"])
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
