@@ -313,8 +313,67 @@ export async function createFeedback(params: {
 
   if (statusError) return { error: statusError.message };
 
+  // Notify participant about feedback (fire & forget)
+  notifyParticipantAboutFeedback(params.submissionId, user.id).catch((err) => {
+    console.error("Failed to send feedback notification:", err);
+  });
+
   revalidatePath("/admin/reflexionen");
   return { success: true };
+}
+
+async function notifyParticipantAboutFeedback(submissionId: string, reviewerId: string) {
+  const { sendFeedbackReceivedNotification } = await import("@/lib/email");
+  const admin = createAdminClient();
+
+  // Get submission with user + assignment info
+  const { data: submission } = await admin
+    .from("submissions")
+    .select(`
+      user_id,
+      assignment:assignments(
+        title,
+        unit:units(id, course_id, course:courses(name))
+      )
+    `)
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) return;
+
+  // Get participant info
+  const { data: participant } = await admin
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", submission.user_id)
+    .single();
+
+  if (!participant) return;
+
+  // Get reviewer name
+  const { data: reviewer } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", reviewerId)
+    .single();
+
+  const assignment = submission.assignment as any;
+  const courseName = assignment?.unit?.course?.name || "Kurs";
+  const courseId = assignment?.unit?.course_id;
+  const unitId = assignment?.unit?.id;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portal.loesungs-impulse.ch";
+  const courseUrl = courseId && unitId
+    ? `${baseUrl}/courses/${courseId}/units/${unitId}`
+    : `${baseUrl}/reflexionen`;
+
+  await sendFeedbackReceivedNotification({
+    recipientEmail: participant.email,
+    recipientName: participant.full_name?.split(" ")[0] || "Teilnehmer",
+    reviewerName: reviewer?.full_name || "Team PLI®",
+    assignmentTitle: assignment?.title || "Reflexion",
+    courseName,
+    courseUrl,
+  });
 }
 
 // ─── KI Feedback Generation ───

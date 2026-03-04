@@ -209,3 +209,53 @@ export async function sendNewReflexionNotification(data: NewReflexionNotificatio
     console.error(`❌ Failed to send reflexion notification to ${data.recipientEmail}:`, error);
   }
 }
+
+// ─── Feedback Received Notification (for participants) ───
+
+export interface FeedbackReceivedNotificationData {
+  recipientEmail: string;
+  recipientName: string;
+  reviewerName: string;
+  assignmentTitle: string;
+  courseName: string;
+  courseUrl: string;
+}
+
+export async function sendFeedbackReceivedNotification(data: FeedbackReceivedNotificationData): Promise<void> {
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: data.recipientEmail,
+      subject: `Feedback zu deiner Reflexion: ${data.assignmentTitle}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <img src="https://portal.loesungs-impulse.ch/logo-teal.svg" alt="PLI" style="height: 40px;" />
+          </div>
+          <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">Du hast Feedback erhalten!</h2>
+          <p style="color: #666; font-size: 14px; margin-bottom: 24px;">
+            Hallo ${data.recipientName},
+          </p>
+          <div style="background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 4px; font-size: 14px;"><strong>${data.reviewerName}</strong> hat deine Reflexion bewertet:</p>
+            <p style="margin: 0; font-size: 14px; color: #666;">${data.assignmentTitle}</p>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #999;">${data.courseName}</p>
+          </div>
+          <a href="${data.courseUrl}" style="display: inline-block; background: #0099A8; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+            Feedback ansehen
+          </a>
+          <p style="color: #999; font-size: 12px; margin-top: 32px;">
+            Diese E-Mail wurde automatisch vom PLI Lernportal versendet.
+          </p>
+        </body>
+        </html>
+      `,
+    });
+    console.log(`✅ Feedback notification sent to ${data.recipientEmail}`);
+  } catch (error) {
+    console.error(`❌ Failed to send feedback notification to ${data.recipientEmail}:`, error);
+  }
+}
