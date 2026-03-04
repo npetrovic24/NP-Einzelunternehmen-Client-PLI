@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getChatMessages, sendChatMessage, markChatAsRead } from "@/lib/actions/chat";
+import { getChatMessages, sendChatMessage, markChatAsRead, getUnreadChatCounts } from "@/lib/actions/chat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,11 @@ export function ChatClient({ courses, currentUserId, currentUserName, currentUse
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    getUnreadChatCounts().then(setUnreadCounts).catch(() => {});
+  }, []);
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -47,6 +52,7 @@ export function ChatClient({ courses, currentUserId, currentUserName, currentUse
       setMessages(data);
       setIsLoading(false);
       markChatAsRead(activeCourseId);
+      setUnreadCounts(prev => ({ ...prev, [activeCourseId]: 0 }));
     });
   }, [activeCourseId]);
 
@@ -70,6 +76,7 @@ export function ChatClient({ courses, currentUserId, currentUserName, currentUse
           const msgs = await getChatMessages(activeCourseId);
           setMessages(msgs);
           markChatAsRead(activeCourseId);
+      setUnreadCounts(prev => ({ ...prev, [activeCourseId]: 0 }));
         }
       )
       .subscribe();
@@ -157,7 +164,12 @@ export function ChatClient({ courses, currentUserId, currentUserName, currentUse
             )}
           >
             <Hash className="h-4 w-4 shrink-0" />
-            <span className="truncate">{course.name}</span>
+            <span className="flex-1 truncate">{course.name}</span>
+            {(unreadCounts[course.id] || 0) > 0 && activeCourseId !== course.id && (
+              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0099A8] px-1.5 text-[11px] font-semibold text-white shrink-0">
+                {unreadCounts[course.id] > 99 ? "99+" : unreadCounts[course.id]}
+              </span>
+            )}
           </button>
         ))}
         </div>
