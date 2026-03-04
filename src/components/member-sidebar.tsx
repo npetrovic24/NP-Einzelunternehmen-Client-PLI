@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, PenLine, Settings, LogOut } from "lucide-react";
+import { BookOpen, PenLine, Settings, LogOut, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/dashboard", label: "Meine Lehrgänge", icon: BookOpen },
   { href: "/reflexionen", label: "Meine Reflexionen", icon: PenLine },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 
 interface MemberSidebarProps {

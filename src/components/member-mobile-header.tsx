@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, LogOut, Menu, PenLine, Settings } from "lucide-react";
+import { BookOpen, LogOut, Menu, MessageCircle, PenLine, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Meine Lehrgänge", icon: BookOpen },
   { href: "/reflexionen", label: "Meine Reflexionen", icon: PenLine },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 
 interface MemberMobileHeaderProps {

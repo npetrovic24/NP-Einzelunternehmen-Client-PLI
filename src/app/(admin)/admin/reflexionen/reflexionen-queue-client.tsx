@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,11 @@ import {
   Users,
   ChevronRight,
   Inbox,
+  UserCheck,
+  Hand,
 } from "lucide-react";
+import { claimSubmission, unclaimSubmission } from "@/lib/actions/submissions";
+import { toast } from "sonner";
 
 type StatusFilter = "all" | "pending" | "in_review" | "reviewed";
 
@@ -23,6 +27,7 @@ interface Submission {
   status: string;
   submitted_at: string;
   assigned_to: string | null;
+  assignee?: { id: string; full_name: string } | null;
   user?: { id: string; full_name: string; email: string };
   assignment?: {
     title: string;
@@ -45,6 +50,7 @@ interface Stats {
 interface Props {
   submissions: Submission[];
   stats: Stats;
+  currentUserId: string;
 }
 
 const statusConfig = {
@@ -53,12 +59,39 @@ const statusConfig = {
   reviewed: { label: "Erledigt", variant: "default" as const, icon: CheckCircle2, color: "text-green-600" },
 };
 
-export function ReflexionenQueueClient({ submissions, stats }: Props) {
+export function ReflexionenQueueClient({ submissions, stats, currentUserId }: Props) {
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [isPending, startTransition] = useTransition();
 
   const filtered = filter === "all"
     ? submissions
     : submissions.filter((s) => s.status === filter);
+
+  const handleClaim = (e: React.MouseEvent, submissionId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startTransition(async () => {
+      const result = await claimSubmission(submissionId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Reflexion übernommen");
+      }
+    });
+  };
+
+  const handleUnclaim = (e: React.MouseEvent, submissionId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startTransition(async () => {
+      const result = await unclaimSubmission(submissionId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Zuweisung aufgehoben");
+      }
+    });
+  };
 
   return (
     <div className="animate-fade-in">
@@ -138,6 +171,9 @@ export function ReflexionenQueueClient({ submissions, stats }: Props) {
               {filtered.map((s) => {
                 const config = statusConfig[s.status as keyof typeof statusConfig] || statusConfig.pending;
                 const StatusIcon = config.icon;
+                const isClaimedByMe = s.assigned_to === currentUserId;
+                const isClaimedByOther = s.assigned_to && s.assigned_to !== currentUserId;
+                const canClaim = s.status === "pending" && !s.assigned_to;
 
                 return (
                   <Link
@@ -154,6 +190,12 @@ export function ReflexionenQueueClient({ submissions, stats }: Props) {
                         <Badge variant={config.variant} className="text-xs">
                           {config.label}
                         </Badge>
+                        {s.assigned_to && s.assignee && (
+                          <Badge variant="outline" className="text-xs gap-1">
+                            <UserCheck className="h-3 w-3" />
+                            {isClaimedByMe ? "Du" : s.assignee.full_name}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {s.assignment?.unit?.course?.name}
@@ -162,14 +204,39 @@ export function ReflexionenQueueClient({ submissions, stats }: Props) {
                         {` — ${s.assignment?.title}`}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(s.submitted_at).toLocaleDateString("de-CH", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                    <div className="flex items-center gap-2">
+                      {canClaim && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 text-xs h-8"
+                          disabled={isPending}
+                          onClick={(e) => handleClaim(e, s.id)}
+                        >
+                          <Hand className="h-3.5 w-3.5" />
+                          Übernehmen
+                        </Button>
+                      )}
+                      {isClaimedByMe && s.status !== "reviewed" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-8 text-muted-foreground"
+                          disabled={isPending}
+                          onClick={(e) => handleUnclaim(e, s.id)}
+                        >
+                          Freigeben
+                        </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(s.submitted_at).toLocaleDateString("de-CH", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                    </div>
                   </Link>
                 );
               })}

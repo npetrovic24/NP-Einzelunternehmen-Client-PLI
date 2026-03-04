@@ -156,6 +156,7 @@ export async function getAllSubmissions(statusFilter?: SubmissionStatus) {
     .select(`
       *,
       user:profiles!submissions_user_id_fkey(id, full_name, email),
+      assignee:profiles!submissions_assigned_to_fkey(id, full_name),
       assignment:assignments(
         *,
         unit:units(
@@ -388,4 +389,62 @@ export async function getReflexionStats() {
     reviewed: reviewedRes.count || 0,
     totalStudents: totalStudentsRes.count || 0,
   };
+}
+
+// ─── Claiming (Dozent/Admin) ───
+
+export async function claimSubmission(submissionId: string) {
+  const { user } = await requireDozentOrAdmin();
+  const admin = createAdminClient();
+
+  // Check if already claimed by someone else
+  const { data: submission } = await admin
+    .from("submissions")
+    .select("assigned_to, status")
+    .eq("id", submissionId)
+    .single();
+
+  if (submission?.assigned_to && submission.assigned_to !== user.id) {
+    return { error: "Diese Reflexion wird bereits von jemand anderem bearbeitet." };
+  }
+
+  const { error } = await admin
+    .from("submissions")
+    .update({ assigned_to: user.id, status: "in_review" })
+    .eq("id", submissionId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/reflexionen");
+  return { success: true };
+}
+
+export async function unclaimSubmission(submissionId: string) {
+  const { user } = await requireDozentOrAdmin();
+  const admin = createAdminClient();
+
+  // Only allow unclaiming your own claims (or admin can unclaim anyone)
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const { data: submission } = await admin
+    .from("submissions")
+    .select("assigned_to")
+    .eq("id", submissionId)
+    .single();
+
+  if (profile?.role !== "admin" && submission?.assigned_to !== user.id) {
+    return { error: "Du kannst nur deine eigenen Zuweisungen aufheben." };
+  }
+
+  const { error } = await admin
+    .from("submissions")
+    .update({ assigned_to: null, status: "pending" })
+    .eq("id", submissionId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/reflexionen");
+  return { success: true };
 }

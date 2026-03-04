@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, MessageCircle, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, MessageCircle, MessageSquare, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
@@ -12,6 +12,7 @@ const allNavItems = [
   { href: "/admin/reflexionen", label: "Reflexionen", icon: MessageCircle, adminOnly: false },
   { href: "/admin/members", label: "Benutzer", icon: Users, adminOnly: false },
   { href: "/admin/courses", label: "Lehrgänge", icon: BookOpen, adminOnly: true },
+  { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false },
 ];
 
 interface AdminSidebarMobileProps {
