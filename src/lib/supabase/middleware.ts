@@ -94,6 +94,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Admin/Dozent on member chat → redirect to admin chat
+  if ((profile?.role === "admin" || profile?.role === "dozent") && pathname.startsWith("/chat")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/chat";
+    return NextResponse.redirect(url);
+  }
+
   // Dozent should never be in member/participant area (except /settings) - redirect to admin
   if (profile?.role === "dozent" && !pathname.startsWith("/admin") && pathname !== "/settings") {
     const url = request.nextUrl.clone();
