@@ -155,22 +155,18 @@ async function notifyTeamAboutNewReflexion(userId: string, assignmentId: string,
     return;
   }
 
-  console.log(`📧 Notifying ${team.length} team members: ${team.map(m => m.email).join(", ")}`);
+  const emails = team.map(m => m.email);
+  console.log(`📧 Notifying ${emails.length} team members: ${emails.join(", ")}`);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://portal.loesungs-impulse.ch";
 
-  // Send to all team members in parallel
-  await Promise.allSettled(
-    team.map((member) =>
-      sendNewReflexionNotification({
-        recipientEmail: member.email,
-        recipientName: member.full_name?.split(" ")[0] || "Team",
-        studentName: student?.full_name || "Ein Teilnehmer",
-        assignmentTitle,
-        courseName,
-        submissionUrl: `${baseUrl}/admin/reflexionen/${submissionId}`,
-      })
-    )
-  );
+  // Send one email to all team members
+  await sendNewReflexionNotification({
+    recipientEmails: emails,
+    studentName: student?.full_name || "Ein Teilnehmer",
+    assignmentTitle,
+    courseName,
+    submissionUrl: `${baseUrl}/admin/reflexionen/${submissionId}`,
+  });
 }
 
 export async function getMySubmissions() {

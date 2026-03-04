@@ -163,8 +163,7 @@ function getWelcomeSubject(role: string): string {
 // ─── New Reflexion Notification ───
 
 export interface NewReflexionNotificationData {
-  recipientEmail: string;
-  recipientName: string;
+  recipientEmails: string[];
   studentName: string;
   assignmentTitle: string;
   courseName: string;
@@ -172,10 +171,12 @@ export interface NewReflexionNotificationData {
 }
 
 export async function sendNewReflexionNotification(data: NewReflexionNotificationData): Promise<void> {
+  if (data.recipientEmails.length === 0) return;
   try {
+    // Send one email with all recipients in BCC (privacy) and a generic to
     await resend.emails.send({
       from: FROM_EMAIL,
-      to: data.recipientEmail,
+      to: data.recipientEmails,
       subject: `Neue Reflexion von ${data.studentName}`,
       html: `
         <!DOCTYPE html>
@@ -187,7 +188,7 @@ export async function sendNewReflexionNotification(data: NewReflexionNotificatio
           </div>
           <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">Neue Reflexion eingereicht</h2>
           <p style="color: #666; font-size: 14px; margin-bottom: 24px;">
-            Hallo ${data.recipientName},
+            Hallo Team,
           </p>
           <div style="background: #f4fafa; border-left: 4px solid #0099A8; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
             <p style="margin: 0 0 4px; font-size: 14px;"><strong>${data.studentName}</strong> hat eine Reflexion eingereicht:</p>
@@ -204,9 +205,9 @@ export async function sendNewReflexionNotification(data: NewReflexionNotificatio
         </html>
       `,
     });
-    console.log(`✅ Reflexion notification sent to ${data.recipientEmail}`);
+    console.log(`✅ Reflexion notification sent to ${data.recipientEmails.join(", ")}`);
   } catch (error) {
-    console.error(`❌ Failed to send reflexion notification to ${data.recipientEmail}:`, error);
+    console.error(`❌ Failed to send reflexion notification:`, error);
   }
 }
 
