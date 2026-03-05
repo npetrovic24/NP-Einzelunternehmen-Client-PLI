@@ -9,6 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   User,
   Calendar,
@@ -21,11 +32,13 @@ import {
   Eye,
   Download,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import {
   createFeedback,
   generateAiFeedback,
   updateSubmissionStatus,
+  deleteSubmission,
 } from "@/lib/actions/submissions";
 
 interface Submission {
@@ -70,6 +83,19 @@ export function ReflexionDetailClient({ submission }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const result = await deleteSubmission(submission.id);
+    if (result.success) {
+      toast.success("Reflexion gelöscht");
+      router.push("/admin/reflexionen");
+    } else {
+      toast.error(result.error || "Fehler beim Löschen");
+      setIsDeleting(false);
+    }
+  };
 
   const config = statusConfig[submission.status as keyof typeof statusConfig] || statusConfig.pending;
   const hasFeedback = submission.feedback && submission.feedback.length > 0;
@@ -144,17 +170,46 @@ export function ReflexionDetailClient({ submission }: Props) {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/reflexionen">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Zurück
-          </Link>
-        </Button>
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.color}`}>
-          <config.icon className="w-3.5 h-3.5" />
-          {config.label}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/admin/reflexionen">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Zurück
+            </Link>
+          </Button>
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.color}`}>
+            <config.icon className="w-3.5 h-3.5" />
+            {config.label}
+          </div>
         </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Löschen
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reflexion löschen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Die Reflexion von {submission.user?.full_name}{hasFeedback ? " inkl. Feedback" : ""} wird unwiderruflich gelöscht.
+                Der/die Teilnehmer:in kann danach eine neue Reflexion einreichen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Wird gelöscht..." : "Löschen"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Meta info above both columns */}
