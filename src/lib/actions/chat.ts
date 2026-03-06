@@ -122,6 +122,24 @@ export async function getUnreadChatCounts(): Promise<Record<string, number>> {
   if (!user) return {};
   const admin = createAdminClient();
 
+  // Check user role
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  // Get courses the user has access to (participants: via access_grants; admin/dozent: all)
+  let courseIds: string[] | null = null; // null = all courses (admin/dozent)
+  if (profile?.role === "participant") {
+    const { data: grants } = await admin
+      .from("access_grants")
+      .select("course_id")
+      .eq("user_id", user.id);
+    courseIds = (grants || []).map(g => g.course_id);
+    if (courseIds.length === 0) return {};
+  }
+
   // Get all read statuses for this user
   const { data: readStatuses } = await admin
     .from("chat_read_status")
@@ -134,10 +152,16 @@ export async function getUnreadChatCounts(): Promise<Record<string, number>> {
   }
 
   // Get message counts per course, excluding own messages
-  const { data: messages } = await admin
+  let query = admin
     .from("chat_messages")
     .select("course_id, created_at")
     .neq("user_id", user.id);
+
+  if (courseIds) {
+    query = query.in("course_id", courseIds);
+  }
+
+  const { data: messages } = await query;
 
   const counts: Record<string, number> = {};
   for (const msg of messages || []) {
