@@ -50,16 +50,13 @@ export function CanvaEmbed({ blockId }: CanvaEmbedProps) {
     <div className="relative w-full overflow-hidden rounded-xl border border-border/50 bg-gradient-to-b from-muted/30 to-muted/10 shadow-sm">
       {/* Skeleton while loading */}
       {(loading || !iframeLoaded) && (
-        <div
-          className="flex flex-col items-center justify-center gap-4"
-          style={{ minHeight: "75vh" }}
-        >
+        <div className="aspect-[16/9] flex flex-col items-center justify-center gap-4">
           <div className="h-10 w-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
           <p className="text-sm text-muted-foreground/70">Wird geladen...</p>
         </div>
       )}
       {embedUrl && (
-        <div style={{ minHeight: "75vh" }} className="relative">
+        <div className="aspect-[16/9] relative">
           <iframe
             src={embedUrl}
             className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${

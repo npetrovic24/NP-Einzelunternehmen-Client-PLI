@@ -171,55 +171,80 @@ export function UnitViewClient({
           <div className="mt-2 h-1 w-12 rounded-full bg-primary/60" />
         </div>
 
-        {/* Content + Reflexion layout */}
-        {assignment ? (
-          /* Side-by-side on desktop: content left, reflexion right */
-          <div className="flex flex-col xl:flex-row gap-8">
-            {/* Content blocks - left side (sticky on desktop) */}
-            <div className="flex-1 min-w-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
-              {blocks.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
-                  <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
-                  <p className="text-muted-foreground text-sm">
-                    Dieser Tag hat noch keine Inhalte.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-10">
-                  {blocks.map((block) => (
-                    <ContentBlockRenderer key={block.id} block={block} />
-                  ))}
+        {/* File downloads — compact strip above content */}
+        {(() => {
+          const fileBlocks = blocks.filter((b) => b.type === "file");
+          const contentBlocks = blocks.filter((b) => b.type !== "file");
+          return (
+            <>
+              {fileBlocks.length > 0 && (
+                <div className="mb-6 flex flex-wrap gap-3">
+                  {fileBlocks.map((block) => {
+                    const c = block.content as Record<string, unknown>;
+                    return (
+                      <a
+                        key={block.id}
+                        href={(c.publicUrl as string) || (c.url as string)}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        {(c.filename as string) || (c.fileName as string) || "Dokument"}
+                      </a>
+                    );
+                  })}
                 </div>
               )}
-            </div>
 
-            {/* Reflexion - right side on desktop, below on mobile */}
-            <div className="xl:w-[520px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start">
-              <ReflexionForm
-                assignment={assignment}
-                existingSubmission={existingSubmission}
-              />
-            </div>
-          </div>
-        ) : (
-          /* No assignment — full width content */
-          <>
-            {blocks.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
-                <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
-                <p className="text-muted-foreground text-sm">
-                  Dieser Tag hat noch keine Inhalte.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-10">
-                {blocks.map((block) => (
-                  <ContentBlockRenderer key={block.id} block={block} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
+              {/* Content + Reflexion layout */}
+              {assignment ? (
+                <div className="flex flex-col xl:flex-row gap-8">
+                  <div className="flex-1 min-w-0 xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
+                    {contentBlocks.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
+                        <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
+                        <p className="text-muted-foreground text-sm">
+                          Dieser Tag hat noch keine Inhalte.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-10">
+                        {contentBlocks.map((block) => (
+                          <ContentBlockRenderer key={block.id} block={block} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="xl:w-[520px] xl:shrink-0 xl:sticky xl:top-6 xl:self-start">
+                    <ReflexionForm
+                      assignment={assignment}
+                      existingSubmission={existingSubmission}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {contentBlocks.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
+                      <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-muted-foreground text-sm">
+                        Dieser Tag hat noch keine Inhalte.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-10">
+                      {contentBlocks.map((block) => (
+                        <ContentBlockRenderer key={block.id} block={block} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Sticky Prev/Next navigation bar */}
