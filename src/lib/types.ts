@@ -37,7 +37,7 @@ export interface Unit {
   created_at: string;
 }
 
-export type ContentBlockType = "canva_embed" | "file" | "text" | "link";
+export type ContentBlockType = "canva_embed" | "file" | "text" | "link" | "video";
 
 export interface ContentBlock {
   id: string;
