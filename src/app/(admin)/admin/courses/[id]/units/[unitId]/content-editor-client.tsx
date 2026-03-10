@@ -57,6 +57,7 @@ import {
   ExternalLink,
   File,
   Save,
+  PlayCircle,
 } from "lucide-react";
 
 interface ContentEditorClientProps {
@@ -72,6 +73,7 @@ const blockTypeLabels: Record<ContentBlockType, string> = {
   text: "Text",
   link: "Link",
   file: "Datei",
+  video: "Video",
 };
 
 const blockTypeIcons: Record<ContentBlockType, typeof Presentation> = {
@@ -79,6 +81,7 @@ const blockTypeIcons: Record<ContentBlockType, typeof Presentation> = {
   text: Type,
   link: LinkIcon,
   file: File,
+  video: PlayCircle,
 };
 
 export function ContentEditorClient({
