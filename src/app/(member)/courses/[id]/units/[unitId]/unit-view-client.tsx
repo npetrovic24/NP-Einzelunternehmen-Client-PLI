@@ -198,27 +198,25 @@ export function UnitViewClient({
           );
 
           return assignment ? (
-            <div className="flex flex-col 2xl:flex-row gap-8">
-              {/* Left column: content + downloads */}
-              <div className="flex-1 min-w-0">
-                {contentBlocks.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
-                    <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
-                    <p className="text-muted-foreground text-sm">
-                      Dieser Tag hat noch keine Inhalte.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-10">
-                    {contentBlocks.map((block) => (
-                      <ContentBlockRenderer key={block.id} block={block} />
-                    ))}
-                  </div>
-                )}
-                {fileDownloads}
-              </div>
-              {/* Right column: reflexion (sticky) */}
-              <div className="2xl:w-[440px] 2xl:shrink-0 2xl:sticky 2xl:top-6 2xl:self-start">
+            <div className="space-y-8">
+              {/* Content blocks (full width) */}
+              {contentBlocks.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/50 p-16 text-center bg-muted/20">
+                  <FileText className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-muted-foreground text-sm">
+                    Dieser Tag hat noch keine Inhalte.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-10">
+                  {contentBlocks.map((block) => (
+                    <ContentBlockRenderer key={block.id} block={block} />
+                  ))}
+                </div>
+              )}
+              {fileDownloads}
+              {/* Reflexion below content */}
+              <div className="max-w-2xl">
                 <ReflexionForm
                   assignment={assignment}
                   existingSubmission={existingSubmission}
