@@ -20,8 +20,26 @@ async function requireAdmin() {
   return user;
 }
 
+async function requireAdminOrDozent() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Nicht authentifiziert");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "dozent"))
+    throw new Error("Keine Berechtigung");
+  return user;
+}
+
 export async function getCourses() {
-  await requireAdmin();
+  await requireAdminOrDozent();
   const supabase = await createClient();
 
   const { data, error } = await supabase
