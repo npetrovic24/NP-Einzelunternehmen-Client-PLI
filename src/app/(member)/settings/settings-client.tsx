@@ -40,6 +40,18 @@ export function SettingsClient({ fullName, email }: SettingsClientProps) {
     if (error) {
       toast.error("Fehler beim Ändern des Passworts");
     } else {
+      // Re-authenticate with new password to ensure session stays valid
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) {
+        // Password was changed but re-auth failed — force re-login
+        toast.success("Passwort geändert. Bitte melden Sie sich neu an.");
+        await supabase.auth.signOut();
+        window.location.href = "/login";
+        return;
+      }
       toast.success("Passwort erfolgreich geändert");
       setPassword("");
       setConfirmPassword("");
